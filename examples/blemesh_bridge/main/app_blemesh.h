@@ -40,6 +40,8 @@ esp_err_t app_ble_mesh_onoff_set(uint16_t blemesh_addr, bool onoff);
  * @return esp_err_t
  */
 esp_err_t blemesh_bridge_match_bridged_onoff_light(uint8_t *composition_data, uint16_t blemesh_addr);
+esp_err_t blemesh_bridge_match_bridged_door_lock(uint8_t espnow_macaddr[6]);
+
 
 #ifdef __cplusplus
 }

@@ -18,8 +18,13 @@
 #include <blemesh_bridge.h>
 #include <app_blemesh.h>
 
+#include <app/clusters/door-lock-server/door-lock-server.h>
+
+
+
 static const char *TAG = "blemesh_bridge";
 
+using namespace chip;
 using namespace chip::app::Clusters;
 using namespace esp_matter;
 using namespace esp_matter::cluster;
@@ -68,15 +73,84 @@ esp_err_t blemesh_bridge_match_bridged_onoff_light(uint8_t *composition_data, ui
     return ESP_OK;
 }
 
+
+esp_err_t blemesh_bridge_match_bridged_door_lock(uint8_t espnow_macaddr[6])
+{
+    /** Compare Composition Data Page 0 to find expected device */
+
+        ESP_LOGI(TAG, "This is an expected device ...");
+        node_t *node = node::get();
+        ESP_RETURN_ON_FALSE(node, ESP_ERR_INVALID_STATE, TAG, "Could not find esp_matter node");
+        if (app_bridge_get_device_by_espnow_macaddr(espnow_macaddr)) {
+            ESP_LOGI(TAG, "Bridged node for 0x%04x bridged device on endpoint %d has been created", espnow_macaddr[0],
+                    app_bridge_get_matter_endpointid_by_espnow_macaddr(espnow_macaddr));
+        } else {
+            app_bridged_device_t *bridged_device =
+                app_bridge_create_bridged_device(node, aggregator_endpoint_id, ESP_MATTER_DOOR_LOCK_DEVICE_TYPE_ID,
+                                                 ESP_MATTER_BRIDGED_DEVICE_TYPE_ESPNOW,
+                                                 app_bridge_espnow_address(espnow_macaddr, 0));
+            ESP_RETURN_ON_FALSE(bridged_device, ESP_FAIL, TAG, "Failed to create bridged device (door lock)");
+            ESP_LOGI(TAG, "Create/Update bridged node for 0x%04x bridged device on endpoint %d", espnow_macaddr[0],
+                    app_bridge_get_matter_endpointid_by_espnow_macaddr(espnow_macaddr));
+        }
+
+    return ESP_OK;
+}
+
+bool emberAfPluginDoorLockOnDoorLockCommand(chip::EndpointId endpointId, const Optional<ByteSpan> & pinCode, OperationErrorEnum & err)
+{
+    err = OperationErrorEnum::kUnspecified;
+	ESP_LOGD(TAG, "emberAfPluginDoorLockOnDoorLockCommand");
+	
+	node_t *node = node::get();
+	endpoint_t *endpoint = endpoint::get(node, endpointId);
+	cluster_t *cluster = cluster::get(endpoint, DoorLock::Id);
+	attribute_t *attribute = attribute::get(cluster, DoorLock::Attributes::LockState::Id);
+	esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+    attribute::get_val(attribute, &val);
+    val.val.b = 1;
+	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
+
+
+    return true;
+}
+
+bool emberAfPluginDoorLockOnDoorUnlockCommand(chip::EndpointId endpointId, const Optional<ByteSpan> & pinCode, OperationErrorEnum & err)
+{
+    err = OperationErrorEnum::kUnspecified;
+	ESP_LOGD(TAG, "emberAfPluginDoorLockOnDoorUnlockCommand");
+	node_t *node = node::get();
+	endpoint_t *endpoint = endpoint::get(node, endpointId);
+	cluster_t *cluster = cluster::get(endpoint, DoorLock::Id);
+	attribute_t *attribute = attribute::get(cluster, DoorLock::Attributes::LockState::Id);
+	esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+    attribute::get_val(attribute, &val);
+    val.val.b = 0;
+	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
+
+    return true;
+}
+
+
 esp_err_t blemesh_bridge_attribute_update(uint16_t endpoint_id, uint32_t cluster_id, uint32_t attribute_id,
                                           esp_matter_attr_val_t *val, app_bridged_device_t *bridged_device)
 {
+    ESP_LOGD(TAG, "blemesh_bridge_attribute_update");
     if (bridged_device && bridged_device->dev && bridged_device->dev->endpoint) {
         if (cluster_id == OnOff::Id) {
             if (attribute_id == OnOff::Attributes::OnOff::Id) {
                 ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
                          attribute_id);
                 app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
+            }
+        }
+		if (cluster_id == DoorLock::Id) {
+			ESP_LOGD(TAG, "Update Bridged Device cluster_id == DoorLock::Id");
+            if (attribute_id == DoorLock::Attributes::LockState::Id) {
+                ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
+                         attribute_id);
+                //app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
+
             }
         }
     }

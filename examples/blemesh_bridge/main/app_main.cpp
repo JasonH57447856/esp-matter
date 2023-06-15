@@ -19,6 +19,7 @@
 #include "blemesh_bridge.h"
 #include "app_blemesh.h"
 
+
 static const char *TAG = "app_main";
 
 using namespace esp_matter;
@@ -105,6 +106,8 @@ extern "C" void app_main()
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to resume the bridged endpoints: %d", err);
     }
+	uint8_t mac_addr[6] = {11,22,33,44,55,66};
+	blemesh_bridge_match_bridged_door_lock(mac_addr);
 
 #if CONFIG_ENABLE_CHIP_SHELL
     esp_matter::console::diagnostics_register_commands();
