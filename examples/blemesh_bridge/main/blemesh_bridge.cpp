@@ -18,7 +18,9 @@
 #include <blemesh_bridge.h>
 #include <app_blemesh.h>
 
+
 #include <app/clusters/door-lock-server/door-lock-server.h>
+#include "AppTask.h"
 
 
 
@@ -97,6 +99,39 @@ esp_err_t blemesh_bridge_match_bridged_door_lock(uint8_t espnow_macaddr[6])
     return ESP_OK;
 }
 
+
+
+esp_err_t blemesh_bridge_attribute_update(uint16_t endpoint_id, uint32_t cluster_id, uint32_t attribute_id,
+                                          esp_matter_attr_val_t *val, app_bridged_device_t *bridged_device)
+{
+    ESP_LOGD(TAG, "blemesh_bridge_attribute_update");
+    if (bridged_device && bridged_device->dev && bridged_device->dev->endpoint) {
+        if (cluster_id == OnOff::Id) {
+            if (attribute_id == OnOff::Attributes::OnOff::Id) {
+                ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
+                         attribute_id);
+                app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
+            }
+        }
+		if (cluster_id == DoorLock::Id) {
+			ESP_LOGD(TAG, "Update Bridged Device cluster_id == DoorLock::Id");
+            if (attribute_id == DoorLock::Attributes::LockState::Id) {
+                ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
+                         attribute_id);
+                //app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
+				GetAppTask().PostLockActionRequest(1,2);
+            }
+        }
+    }
+    else{
+        ESP_LOGE(TAG, "Unable to Update Bridge Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
+                 attribute_id);
+    }
+    return ESP_OK;
+}
+
+
+										  
 bool emberAfPluginDoorLockOnDoorLockCommand(chip::EndpointId endpointId, const Optional<ByteSpan> & pinCode, OperationErrorEnum & err)
 {
     err = OperationErrorEnum::kUnspecified;
@@ -129,36 +164,6 @@ bool emberAfPluginDoorLockOnDoorUnlockCommand(chip::EndpointId endpointId, const
 	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
 
     return true;
-}
-
-
-esp_err_t blemesh_bridge_attribute_update(uint16_t endpoint_id, uint32_t cluster_id, uint32_t attribute_id,
-                                          esp_matter_attr_val_t *val, app_bridged_device_t *bridged_device)
-{
-    ESP_LOGD(TAG, "blemesh_bridge_attribute_update");
-    if (bridged_device && bridged_device->dev && bridged_device->dev->endpoint) {
-        if (cluster_id == OnOff::Id) {
-            if (attribute_id == OnOff::Attributes::OnOff::Id) {
-                ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
-                         attribute_id);
-                app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
-            }
-        }
-		if (cluster_id == DoorLock::Id) {
-			ESP_LOGD(TAG, "Update Bridged Device cluster_id == DoorLock::Id");
-            if (attribute_id == DoorLock::Attributes::LockState::Id) {
-                ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
-                         attribute_id);
-                //app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
-
-            }
-        }
-    }
-    else{
-        ESP_LOGE(TAG, "Unable to Update Bridge Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
-                 attribute_id);
-    }
-    return ESP_OK;
 }
 
 /** ToDo: Implement some keep-alive logic in BLE mesh 
