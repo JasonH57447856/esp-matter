@@ -119,7 +119,7 @@ esp_err_t blemesh_bridge_attribute_update(uint16_t endpoint_id, uint32_t cluster
                 ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
                          attribute_id);
                 //app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
-				GetAppTask().PostLockActionRequest(1,2);
+				GetAppTask().PostLockActionRequest(1,val->val.b);
             }
         }
     }

@@ -18,6 +18,7 @@
 #include "AppTask.h"
 #include <app_blemesh.h>
 #include "esp_log.h"
+
 /*
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app-common/zap-generated/ids/Clusters.h>
@@ -30,6 +31,7 @@
 #include <lock/AppEvent.h>
 #include <platform/CHIPDeviceLayer.h>
 #include <platform/internal/CHIPDeviceLayerInternal.h>*/
+
 
 #define APP_TASK_NAME "Matter_Bridge"
 
@@ -86,7 +88,10 @@ esp_err_t AppTask::Init()
     );  
 	uint8_t mac_addr[6] = {11,22,33,44,55,66};
 	blemesh_bridge_match_bridged_door_lock(mac_addr);
+	//app_mqtt_init();
+	app_uart_init();
 
+	
     return err;
 }
 
@@ -132,11 +137,11 @@ void AppTask::FunctionTimerEventHandler(AppEvent * aEvent)
 void AppTask::LockActionEventHandler(AppEvent * aEvent)
 {
 
-   ESP_LOGI(TAG, "LockActionEventHandler.");
+   ESP_LOGI(TAG, "LockActionEventHandler, lock status: 0x%x", aEvent->LockEvent.Action);
 
 }
 
-void AppTask::PostLockActionRequest(int32_t aActor, int32_t aAction)
+void AppTask::PostLockActionRequest(int8_t aActor, int8_t aAction)
 {
     AppEvent event;
     event.Type              = AppEvent::kEventType_Lock;

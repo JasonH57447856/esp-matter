@@ -22,6 +22,7 @@
 #include "AppTask.h"
 
 
+
 static const char *TAG = "app_main";
 
 using namespace esp_matter;
@@ -34,10 +35,11 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
     switch (event->Type) {
     case chip::DeviceLayer::DeviceEventType::kInterfaceIpAddressChanged:
         ESP_LOGI(TAG, "Interface IP Address Changed");
+		app_mqtt_init();
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningComplete:
-        ESP_LOGI(TAG, "Commissioning complete");
+        ESP_LOGI(TAG, "Commissioning complete");		
         break;
 
     case chip::DeviceLayer::DeviceEventType::kFailSafeTimerExpired:

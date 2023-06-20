@@ -28,6 +28,11 @@
 #include <lib/support/CodeUtils.h>
 #include <platform/CHIPDeviceLayer.h>
 
+#include "app_mqtt.h"
+#include "app_uart.h"
+
+
+
 struct AppEvent;
 typedef void (*EventHandler)(AppEvent *);
 
@@ -56,7 +61,7 @@ struct AppEvent
         struct
         {
             uint8_t Action;
-            int32_t Actor;
+            int8_t Actor;
         } LockEvent;
     };
 
@@ -71,7 +76,7 @@ public:
     esp_err_t StartAppTask();
     static void AppTaskMain(void * pvParameter);
 
-    void PostLockActionRequest(int32_t aActor, int32_t aAction);
+    void PostLockActionRequest(int8_t aActor, int8_t aAction);
     void PostEvent(const AppEvent * event);
 
 
@@ -99,3 +104,6 @@ inline AppTask & GetAppTask(void)
 {
     return AppTask::sAppTask;
 }
+
+
+
