@@ -35,7 +35,8 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
     switch (event->Type) {
     case chip::DeviceLayer::DeviceEventType::kInterfaceIpAddressChanged:
         ESP_LOGI(TAG, "Interface IP Address Changed");
-		app_mqtt_init();
+	    if(event->InterfaceIpAddressChanged.Type == chip::DeviceLayer::InterfaceIpChangeType::kIpV4_Assigned)
+			app_mqtt_init();
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningComplete:

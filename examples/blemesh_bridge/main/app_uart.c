@@ -41,7 +41,7 @@ static const char *TAG = "uart_events";
 
 #define PATTERN_CHR_NUM    (3)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
 
-#define BUF_SIZE (1024)
+#define BUF_SIZE (128)
 #define RD_BUF_SIZE (BUF_SIZE)
 static QueueHandle_t uart0_queue;
 

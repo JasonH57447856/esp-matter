@@ -30,11 +30,11 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 
-
+/*
 #ifdef MQTT_TASK_PRIORITY
 #undef MQTT_TASK_PRIORITY
 #define MQTT_TASK_PRIORITY configMAX_PRIORITIES
-#endif
+#endif*/
 
 
 #define CONFIG_BROKER_URL "mqtt://test.mosquitto.org"
@@ -76,7 +76,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
+    /*    msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
         msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
@@ -86,7 +86,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
         msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+        ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);*/
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -128,7 +128,7 @@ static void mqtt_app_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
         //.broker.address.uri = CONFIG_BROKER_URL,
-		.session.keepalive = 5,
+		//.session.keepalive = 5,
 		.broker.address.hostname = CONFIG_HOST_NAME,
 		.broker.address.port = 1883,
 		.broker.address.transport = MQTT_TRANSPORT_OVER_TCP,
@@ -173,6 +173,7 @@ static void mqtt_app_start(void)
 
 void app_mqtt_init(void)
 {
+	static bool initialised = false;
     ESP_LOGI(TAG, "[APP] Startup..");
     ESP_LOGI(TAG, "[APP] Free memory: %"PRIX32" bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
@@ -185,15 +186,9 @@ void app_mqtt_init(void)
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("outbox", ESP_LOG_VERBOSE);
 
-   // ESP_ERROR_CHECK(nvs_flash_init());
-   // ESP_ERROR_CHECK(esp_netif_init());
-   // ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-    //ESP_ERROR_CHECK(example_connect());
-
-    mqtt_app_start();
+	if(initialised == false)
+	{
+    	mqtt_app_start();
+		initialised = true;
+	}
 }
