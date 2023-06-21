@@ -18,6 +18,10 @@
 #include "AppTask.h"
 #include <app_blemesh.h>
 #include "esp_log.h"
+#include "esp_wifi.h"
+#include "esp_system.h"
+#include "esp_event.h"
+
 
 /*
 #include <app-common/zap-generated/attributes/Accessors.h>
@@ -75,6 +79,8 @@ esp_err_t AppTask::StartAppTask()
     return sAppTaskHandle ? ESP_OK : ESP_FAIL;
 }
 
+				  
+
 esp_err_t AppTask::Init()
 {
 	esp_err_t err = ESP_OK;
@@ -88,8 +94,10 @@ esp_err_t AppTask::Init()
     );  
 	uint8_t mac_addr[6] = {11,22,33,44,55,66};
 	blemesh_bridge_match_bridged_door_lock(mac_addr);
-	//app_mqtt_init();
 	app_uart_init();
+	if (ConnectivityMgr().IsWiFiStationProvisioned()){
+		app_mqtt_init();
+		}
 
 	
     return err;
@@ -172,6 +180,18 @@ void AppTask::DispatchEvent(AppEvent * aEvent)
     {
         ESP_LOGI(TAG, "Event received with no handler. Dropping event.");
     }
+}
+
+void app_mqtt_process(esp_mqtt_event_handle_t event_data)
+{
+	ESP_LOGI(TAG, "app_mqtt_process");
+	printf("TOPIC=%.*s\r\n", event_data->topic_len, event_data->topic);
+	printf("DATA=%.*s\r\n", event_data->data_len, event_data->data);
+}
+
+void app_uart_process(void *buf, uint32_t length)
+{
+    ESP_LOGI(TAG, "app_uart_process length=%"PRIX32" ", length);
 }
 
 

@@ -13,6 +13,8 @@ extern "C" {
 #endif
 
 void app_uart_init(void);
+void app_uart_process(void *buf, uint32_t length);
+
 
 #ifdef __cplusplus
 }

@@ -12,7 +12,11 @@
 extern "C" {
 #endif
 
+#include "mqtt_client.h"
+
 void app_mqtt_init(void);
+void app_mqtt_process(esp_mqtt_event_handle_t event_data);
+
 
 #ifdef __cplusplus
 }
