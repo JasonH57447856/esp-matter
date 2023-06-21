@@ -159,6 +159,45 @@ void AppTask::PostLockActionRequest(int8_t aActor, int8_t aAction)
     PostEvent(&event);
 }
 
+void AppTask::MqttActionEventHandler(AppEvent * aEvent)
+{
+	if(aEvent->MqttEvent.buf){
+		printf("MQTT DATA=%.*s\r\n", aEvent->MqttEvent.len, aEvent->MqttEvent.buf);
+		vPortFree(aEvent->MqttEvent.buf);
+		aEvent->MqttEvent.buf = NULL;
+	}
+}
+
+void AppTask::PostMqttActionRequest(uint8_t len, uint8_t* buf)
+{
+    AppEvent event;
+    event.Type              = AppEvent::kEventType_Mqtt;
+    event.MqttEvent.len  = len;
+    event.MqttEvent.buf = buf;
+    event.Handler           = MqttActionEventHandler;
+    PostEvent(&event);
+}
+
+void AppTask::UartActionEventHandler(AppEvent * aEvent)
+{
+	if(aEvent->UartEvent.buf){
+		printf("UART DATA=%.*s\r\n", aEvent->UartEvent.len, aEvent->UartEvent.buf);
+		vPortFree(aEvent->UartEvent.buf);
+		aEvent->UartEvent.buf = NULL;
+	}
+}
+
+void AppTask::PostUartActionRequest(uint8_t len, uint8_t* buf)
+{
+    AppEvent event;
+    event.Type              = AppEvent::kEventType_Uart;
+    event.UartEvent.len  = len;
+    event.UartEvent.buf = buf;
+    event.Handler           = UartActionEventHandler;
+    PostEvent(&event);
+}
+
+
 void AppTask::PostEvent(const AppEvent * aEvent)
 {
     if (sAppEventQueue != NULL)
@@ -186,12 +225,27 @@ void app_mqtt_process(esp_mqtt_event_handle_t event_data)
 {
 	ESP_LOGI(TAG, "app_mqtt_process");
 	printf("TOPIC=%.*s\r\n", event_data->topic_len, event_data->topic);
-	printf("DATA=%.*s\r\n", event_data->data_len, event_data->data);
+	
+	uint8_t* buf = (uint8_t*) pvPortMalloc(event_data->data_len);
+	if(buf){
+		memcpy(buf, (uint8_t*)event_data->data, event_data->data_len);
+		GetAppTask().PostMqttActionRequest(event_data->data_len, buf);
+	}else{
+		ESP_LOGE(TAG, "app mqtt pvPortMalloc error");
+	}
+	
 }
 
-void app_uart_process(void *buf, uint32_t length)
+void app_uart_process(uint8_t *buf, uint32_t length)
 {
-    ESP_LOGI(TAG, "app_uart_process length=%"PRIX32" ", length);
+    ESP_LOGI(TAG, "app_uart_process length= %" PRIX32 " ", length);
+	uint8_t* buffer = (uint8_t*) pvPortMalloc(length);
+	if(buffer){
+		memcpy(buffer, (uint8_t*)buf, length);
+		GetAppTask().PostUartActionRequest(length, buffer);
+	}else{
+		ESP_LOGE(TAG, "app uart pvPortMalloc error");
+	}
 }
 
 

@@ -156,5 +156,7 @@ void app_uart_init(void)
     uart_pattern_queue_reset(EX_UART_NUM, 20);
 
     //Create a task to handler UART event from ISR
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, UART_TASK_PRIORITY, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, UART_TASK_PRIORITY, NULL);
 }
+
+

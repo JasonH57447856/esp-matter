@@ -11,9 +11,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include <stdio.h>
+#include <string.h>
 
 void app_uart_init(void);
-void app_uart_process(void *buf, uint32_t length);
+void app_uart_process(uint8_t *buf, uint32_t length);
 
 
 #ifdef __cplusplus

@@ -44,6 +44,8 @@ struct AppEvent
         kEventType_Timer,
         kEventType_Lock,
         kEventType_Install,
+        kEventType_Mqtt,
+        kEventType_Uart,
     };
 
     uint16_t Type;
@@ -63,6 +65,16 @@ struct AppEvent
             uint8_t Action;
             int8_t Actor;
         } LockEvent;
+		struct
+        {
+            uint8_t len;
+            uint8_t* buf;
+        } MqttEvent;
+		struct
+        {
+            uint8_t len;
+            uint8_t* buf;
+        } UartEvent;		
     };
 
     EventHandler Handler;
@@ -77,6 +89,8 @@ public:
     static void AppTaskMain(void * pvParameter);
 
     void PostLockActionRequest(int8_t aActor, int8_t aAction);
+	void PostMqttActionRequest(uint8_t len, uint8_t* buf);
+	void PostUartActionRequest(uint8_t len, uint8_t* buf);
     void PostEvent(const AppEvent * event);
 
 
@@ -92,6 +106,8 @@ private:
     static void FunctionTimerEventHandler(AppEvent * aEvent);
     static void FunctionHandler(AppEvent * aEvent);
     static void LockActionEventHandler(AppEvent * aEvent);
+	static void MqttActionEventHandler(AppEvent * aEvent);
+	static void UartActionEventHandler(AppEvent * aEvent);
     static void TimerEventHandler(TimerHandle_t xTimer);
 
 
