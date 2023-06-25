@@ -34,15 +34,7 @@ static const char *TAG = "uart_events";
  * - Pin assignment: TxD (default), RxD (default)
  */
 
-#define EX_UART_NUM UART_NUM_2
-#define TXD2_PIN 			(GPIO_NUM_16)
-#define RXD2_PIN 			(GPIO_NUM_17)
 
-
-#define PATTERN_CHR_NUM    (3)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
-
-#define BUF_SIZE (128)
-#define RD_BUF_SIZE (BUF_SIZE)
 static QueueHandle_t uart0_queue;
 
 static void uart_event_task(void *pvParameters)
@@ -157,6 +149,13 @@ void app_uart_init(void)
 
     //Create a task to handler UART event from ISR
     xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, UART_TASK_PRIORITY, NULL);
+}
+
+void app_uart_send(const void *src, size_t size)
+{
+	
+	ESP_LOGI(TAG, "app_uart_send: %d", size);
+	uart_write_bytes(EX_UART_NUM, src, size);
 }
 
 

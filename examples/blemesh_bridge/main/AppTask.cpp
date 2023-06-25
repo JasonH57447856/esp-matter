@@ -21,36 +21,27 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_event.h"
-
-
-/*
-#include <app-common/zap-generated/attributes/Accessors.h>
-#include <app-common/zap-generated/ids/Clusters.h>
-#include <app/server/OnboardingCodesUtil.h>
-#include <app/server/Server.h>
-#include <app/util/af-enums.h>
-#include <app/util/attribute-storage.h>
-#include <lib/support/CodeUtils.h>
-#include <lock/AppConfig.h>
-#include <lock/AppEvent.h>
-#include <platform/CHIPDeviceLayer.h>
-#include <platform/internal/CHIPDeviceLayerInternal.h>*/
+#include "cJSON.h"
+#include <app_uart.h>
+#include "app_mqtt_util.h"
+#include "app_uart_util.h"
 
 
 #define APP_TASK_NAME "Matter_Bridge"
 
 
-#define FACTORY_RESET_TRIGGER_TIMEOUT 3000
-#define FACTORY_RESET_CANCEL_WINDOW_TIMEOUT 3000
+//#define FACTORY_RESET_TRIGGER_TIMEOUT 3000
+//#define FACTORY_RESET_CANCEL_WINDOW_TIMEOUT 3000
 #define APP_EVENT_QUEUE_SIZE 10
 #define APP_TASK_STACK_SIZE (3000)
 #define APP_TASK_PRIORITY 1
-#define STATUS_LED_GPIO_NUM GPIO_NUM_2 // Use LED1 (blue LED) as status LED on DevKitC
+//#define STATUS_LED_GPIO_NUM GPIO_NUM_2 // Use LED1 (blue LED) as status LED on DevKitC
 
 static const char * const TAG = "App-Task";
 
 namespace {
 TimerHandle_t sFunctionTimer; // FreeRTOS app sw timer.
+
 
 
 BaseType_t sAppTaskHandle;
@@ -159,41 +150,23 @@ void AppTask::PostLockActionRequest(int8_t aActor, int8_t aAction)
     PostEvent(&event);
 }
 
-void AppTask::MqttActionEventHandler(AppEvent * aEvent)
-{
-	if(aEvent->MqttEvent.buf){
-		printf("MQTT DATA=%.*s\r\n", aEvent->MqttEvent.len, aEvent->MqttEvent.buf);
-		vPortFree(aEvent->MqttEvent.buf);
-		aEvent->MqttEvent.buf = NULL;
-	}
-}
-
-void AppTask::PostMqttActionRequest(uint8_t len, uint8_t* buf)
+void AppTask::PostMqttActionRequest(uint32_t len, uint8_t* buf)
 {
     AppEvent event;
     event.Type              = AppEvent::kEventType_Mqtt;
     event.MqttEvent.len  = len;
     event.MqttEvent.buf = buf;
-    event.Handler           = MqttActionEventHandler;
+    event.Handler           = MqttEventHandler;
     PostEvent(&event);
 }
 
-void AppTask::UartActionEventHandler(AppEvent * aEvent)
-{
-	if(aEvent->UartEvent.buf){
-		printf("UART DATA=%.*s\r\n", aEvent->UartEvent.len, aEvent->UartEvent.buf);
-		vPortFree(aEvent->UartEvent.buf);
-		aEvent->UartEvent.buf = NULL;
-	}
-}
-
-void AppTask::PostUartActionRequest(uint8_t len, uint8_t* buf)
+void AppTask::PostUartActionRequest(uint32_t len, uint8_t* buf)
 {
     AppEvent event;
     event.Type              = AppEvent::kEventType_Uart;
     event.UartEvent.len  = len;
     event.UartEvent.buf = buf;
-    event.Handler           = UartActionEventHandler;
+    event.Handler           =UartEventHandler;
     PostEvent(&event);
 }
 
@@ -221,20 +194,6 @@ void AppTask::DispatchEvent(AppEvent * aEvent)
     }
 }
 
-void app_mqtt_process(esp_mqtt_event_handle_t event_data)
-{
-	ESP_LOGI(TAG, "app_mqtt_process");
-	printf("TOPIC=%.*s\r\n", event_data->topic_len, event_data->topic);
-	
-	uint8_t* buf = (uint8_t*) pvPortMalloc(event_data->data_len);
-	if(buf){
-		memcpy(buf, (uint8_t*)event_data->data, event_data->data_len);
-		GetAppTask().PostMqttActionRequest(event_data->data_len, buf);
-	}else{
-		ESP_LOGE(TAG, "app mqtt pvPortMalloc error");
-	}
-	
-}
 
 void app_uart_process(uint8_t *buf, uint32_t length)
 {
@@ -246,6 +205,21 @@ void app_uart_process(uint8_t *buf, uint32_t length)
 	}else{
 		ESP_LOGE(TAG, "app uart pvPortMalloc error");
 	}
+}
+
+void app_mqtt_process(esp_mqtt_event_handle_t event_data)
+{
+	ESP_LOGI(TAG, "app_mqtt_process");
+	ESP_LOGI(TAG, "TOPIC=%s", event_data->topic);
+	
+	uint8_t* buf = (uint8_t*) pvPortMalloc(event_data->data_len);
+	if(buf){
+		memcpy(buf, (uint8_t*)event_data->data, event_data->data_len);
+		GetAppTask().PostMqttActionRequest(event_data->data_len, buf);
+	}else{
+		ESP_LOGE(TAG, "app mqtt pvPortMalloc error");
+	}
+	
 }
 
 

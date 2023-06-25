@@ -20,8 +20,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-//#include <lock/AppEvent.h>
-//#include <lock/BoltLockManager.h>
 
 #include "freertos/FreeRTOS.h"
 #include <ble/BLEEndPoint.h>
@@ -67,12 +65,12 @@ struct AppEvent
         } LockEvent;
 		struct
         {
-            uint8_t len;
+            uint32_t len;
             uint8_t* buf;
         } MqttEvent;
 		struct
         {
-            uint8_t len;
+            uint32_t len;
             uint8_t* buf;
         } UartEvent;		
     };
@@ -89,8 +87,8 @@ public:
     static void AppTaskMain(void * pvParameter);
 
     void PostLockActionRequest(int8_t aActor, int8_t aAction);
-	void PostMqttActionRequest(uint8_t len, uint8_t* buf);
-	void PostUartActionRequest(uint8_t len, uint8_t* buf);
+	void PostMqttActionRequest(uint32_t len, uint8_t* buf);
+	void PostUartActionRequest(uint32_t len, uint8_t* buf);
     void PostEvent(const AppEvent * event);
 
 
@@ -106,14 +104,16 @@ private:
     static void FunctionTimerEventHandler(AppEvent * aEvent);
     static void FunctionHandler(AppEvent * aEvent);
     static void LockActionEventHandler(AppEvent * aEvent);
-	static void MqttActionEventHandler(AppEvent * aEvent);
-	static void UartActionEventHandler(AppEvent * aEvent);
+	//static void MqttActionEventHandler(AppEvent * aEvent);
+	//static void UartActionEventHandler(AppEvent * aEvent);
     static void TimerEventHandler(TimerHandle_t xTimer);
+
 
 
     void StartTimer(uint32_t aTimeoutMs);
 
     static AppTask sAppTask;
+	//static MqttData_t sMqttData;
 };
 
 inline AppTask & GetAppTask(void)
