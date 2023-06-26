@@ -17,7 +17,7 @@
 #include "app_uart.h"
 #include "app_mqtt_util.h"
 #include "AppTask.h"
-#include "base64.h"
+//#include "c_base64.h"
 
 
 MqttData_t sMqttData;
@@ -56,7 +56,8 @@ void MqttCommandHandler(MqttData_t * MqttData)
 		ESP_LOGI(TAG, "lockCommandRequest");
 		if(strcmp(MqttData->lockCommandRequest.commandName,"forward")==0){
 			size_t out_len;
-			app_uart_send((const char*)base64_decode(MqttData->lockCommandRequest.commandContent,strlen(MqttData->lockCommandRequest.commandContent),&out_len),out_len);
+			//app_uart_send((const char*)base64_decode(MqttData->lockCommandRequest.commandContent,strlen(MqttData->lockCommandRequest.commandContent),&out_len),out_len);
+			app_uart_send((const char*)MqttData->lockCommandRequest.commandContent,strlen(MqttData->lockCommandRequest.commandContent));
 			}
 		}
 

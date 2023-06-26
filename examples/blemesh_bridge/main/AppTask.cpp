@@ -27,6 +27,7 @@
 #include "app_uart_util.h"
 
 
+
 #define APP_TASK_NAME "Matter_Bridge"
 
 
@@ -150,36 +151,40 @@ void AppTask::PostLockActionRequest(int8_t aActor, int8_t aAction)
     PostEvent(&event);
 }
 
-void AppTask::PostMqttActionRequest(uint32_t len, uint8_t* buf)
+esp_err_t AppTask::PostMqttActionRequest(uint32_t len, uint8_t* buf)
 {
     AppEvent event;
     event.Type              = AppEvent::kEventType_Mqtt;
     event.MqttEvent.len  = len;
     event.MqttEvent.buf = buf;
     event.Handler           = MqttEventHandler;
-    PostEvent(&event);
+    return PostEvent(&event);
 }
 
-void AppTask::PostUartActionRequest(uint32_t len, uint8_t* buf)
+esp_err_t AppTask::PostUartActionRequest(uint32_t len, uint8_t* buf)
 {
     AppEvent event;
     event.Type              = AppEvent::kEventType_Uart;
     event.UartEvent.len  = len;
     event.UartEvent.buf = buf;
     event.Handler           =UartEventHandler;
-    PostEvent(&event);
+    return PostEvent(&event);
 }
 
 
-void AppTask::PostEvent(const AppEvent * aEvent)
+esp_err_t AppTask::PostEvent(const AppEvent * aEvent)
 {
     if (sAppEventQueue != NULL)
     {
         if (!xQueueSend(sAppEventQueue, aEvent, 1))
         {
             ESP_LOGI(TAG, "Failed to post event to app task event queue");
+			return ESP_FAIL;
         }
+		else
+			return ESP_OK;
     }
+	return ESP_FAIL;
 }
 
 void AppTask::DispatchEvent(AppEvent * aEvent)
@@ -201,7 +206,10 @@ void app_uart_process(uint8_t *buf, uint32_t length)
 	uint8_t* buffer = (uint8_t*) pvPortMalloc(length);
 	if(buffer){
 		memcpy(buffer, (uint8_t*)buf, length);
-		GetAppTask().PostUartActionRequest(length, buffer);
+		if(GetAppTask().PostUartActionRequest(length, buffer)==ESP_FAIL){
+			 vPortFree(buffer);
+		     buffer = NULL;
+			}
 	}else{
 		ESP_LOGE(TAG, "app uart pvPortMalloc error");
 	}
@@ -215,7 +223,10 @@ void app_mqtt_process(esp_mqtt_event_handle_t event_data)
 	uint8_t* buf = (uint8_t*) pvPortMalloc(event_data->data_len);
 	if(buf){
 		memcpy(buf, (uint8_t*)event_data->data, event_data->data_len);
-		GetAppTask().PostMqttActionRequest(event_data->data_len, buf);
+		if(GetAppTask().PostMqttActionRequest(event_data->data_len, buf)==ESP_FAIL){
+			 vPortFree(buf);
+		     buf = NULL;
+			}
 	}else{
 		ESP_LOGE(TAG, "app mqtt pvPortMalloc error");
 	}

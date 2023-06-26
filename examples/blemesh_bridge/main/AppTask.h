@@ -87,9 +87,9 @@ public:
     static void AppTaskMain(void * pvParameter);
 
     void PostLockActionRequest(int8_t aActor, int8_t aAction);
-	void PostMqttActionRequest(uint32_t len, uint8_t* buf);
-	void PostUartActionRequest(uint32_t len, uint8_t* buf);
-    void PostEvent(const AppEvent * event);
+	esp_err_t PostMqttActionRequest(uint32_t len, uint8_t* buf);
+	esp_err_t PostUartActionRequest(uint32_t len, uint8_t* buf);
+    esp_err_t PostEvent(const AppEvent * event);
 
 
 
