@@ -18,14 +18,16 @@
 #include "AppTask.h"
 #include <app_blemesh.h>
 #include "esp_log.h"
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "esp_event.h"
 #include "cJSON.h"
 #include <app_uart.h>
 #include "app_mqtt_util.h"
 #include "app_uart_util.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
+#include <platform/CHIPDeviceLayer.h>
 
 
 #define APP_TASK_NAME "Matter_Bridge"
@@ -33,15 +35,15 @@
 
 //#define FACTORY_RESET_TRIGGER_TIMEOUT 3000
 //#define FACTORY_RESET_CANCEL_WINDOW_TIMEOUT 3000
-#define APP_EVENT_QUEUE_SIZE 10
+#define APP_EVENT_QUEUE_SIZE 20
 #define APP_TASK_STACK_SIZE (3000)
-#define APP_TASK_PRIORITY 1
+#define APP_TASK_PRIORITY 2
 //#define STATUS_LED_GPIO_NUM GPIO_NUM_2 // Use LED1 (blue LED) as status LED on DevKitC
 
 static const char * const TAG = "App-Task";
 
 namespace {
-TimerHandle_t sFunctionTimer; // FreeRTOS app sw timer.
+//TimerHandle_t sFunctionTimer; // FreeRTOS app sw timer.
 
 
 
@@ -78,15 +80,16 @@ esp_err_t AppTask::Init()
 	esp_err_t err = ESP_OK;
 
     // Create FreeRTOS sw timer for Function Selection
-    sFunctionTimer = xTimerCreate("FnTmr",          // Just a text name, not used by the RTOS kernel
+ /*   sFunctionTimer = xTimerCreate("FnTmr",          // Just a text name, not used by the RTOS kernel
                                   1,                // == default timer period (mS)
                                   false,            // no timer reload (==one-shot)
                                   (void *) this,    // init timer id = app task obj context
                                   TimerEventHandler // timer callback handler
-    );  
+    );  */
 	uint8_t mac_addr[6] = {11,22,33,44,55,66};
 	blemesh_bridge_match_bridged_door_lock(mac_addr);
 	app_uart_init();
+	uart_send_task_init();
 	if (ConnectivityMgr().IsWiFiStationProvisioned()){
 		app_mqtt_init();
 		}
@@ -98,7 +101,7 @@ esp_err_t AppTask::Init()
 void AppTask::AppTaskMain(void * pvParameter)
 {
     AppEvent event;
-    Clock::Timestamp lastChangeTime = Clock::kZero;
+   // Clock::Timestamp lastChangeTime = Clock::kZero;
 
     esp_err_t err = sAppTask.Init();
     if (err != ESP_OK)
@@ -120,7 +123,7 @@ void AppTask::AppTaskMain(void * pvParameter)
 
     }
 }
-
+/*
 void AppTask::TimerEventHandler(TimerHandle_t xTimer)
 {
     AppEvent event;
@@ -133,6 +136,7 @@ void AppTask::TimerEventHandler(TimerHandle_t xTimer)
 void AppTask::FunctionTimerEventHandler(AppEvent * aEvent)
 {
 }
+*/
 
 void AppTask::LockActionEventHandler(AppEvent * aEvent)
 {
@@ -167,7 +171,7 @@ esp_err_t AppTask::PostUartActionRequest(uint32_t len, uint8_t* buf)
     event.Type              = AppEvent::kEventType_Uart;
     event.UartEvent.len  = len;
     event.UartEvent.buf = buf;
-    event.Handler           =UartEventHandler;
+    event.Handler           =UartReceiveEventHandler;
     return PostEvent(&event);
 }
 
@@ -176,7 +180,7 @@ esp_err_t AppTask::PostEvent(const AppEvent * aEvent)
 {
     if (sAppEventQueue != NULL)
     {
-        if (!xQueueSend(sAppEventQueue, aEvent, 1))
+        if (!xQueueSend(sAppEventQueue, aEvent, (TickType_t)0))
         {
             ESP_LOGI(TAG, "Failed to post event to app task event queue");
 			return ESP_FAIL;

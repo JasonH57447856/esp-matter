@@ -14,7 +14,22 @@
 extern "C" {
 #endif
 
-void UartEventHandler(AppEvent * aEvent);
+struct UartSendEvent
+{
+    enum UartSendEventTypes
+    {
+        kEventType_Data = 0,
+        kEventType_Ack,
+    };
+    uint16_t Type;
+    uint32_t len;
+    uint8_t* buf;
+};
+
+
+void UartReceiveEventHandler(AppEvent * aEvent);
+void app_uart_send(const void *src, size_t size);
+esp_err_t uart_send_task_init(void);
 
 
 

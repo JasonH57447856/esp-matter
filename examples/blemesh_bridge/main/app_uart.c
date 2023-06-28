@@ -151,11 +151,4 @@ void app_uart_init(void)
     xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, UART_TASK_PRIORITY, NULL);
 }
 
-void app_uart_send(const void *src, size_t size)
-{
-	
-	ESP_LOGI(TAG, "app_uart_send: %d", size);
-	uart_write_bytes(EX_UART_NUM, src, size);
-}
-
 

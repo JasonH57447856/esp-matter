@@ -32,11 +32,13 @@
 #include "app_mqtt.h"
 
 
-/*
+
 #ifdef MQTT_TASK_PRIORITY
 #undef MQTT_TASK_PRIORITY
-#define MQTT_TASK_PRIORITY configMAX_PRIORITIES
-#endif*/
+#define MQTT_TASK_PRIORITY 11
+#else
+#define MQTT_TASK_PRIORITY 11
+#endif
 
 
 #define CONFIG_BROKER_URL "mqtt://test.mosquitto.org"

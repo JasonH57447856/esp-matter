@@ -22,11 +22,11 @@ extern "C" {
 
 #define PATTERN_CHR_NUM    (3)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
 
-#define BUF_SIZE (128)
+#define BUF_SIZE (1024)
 #define RD_BUF_SIZE (BUF_SIZE)
+#define TX_BUF_SIZE (BUF_SIZE)
 
 void app_uart_init(void);
-void app_uart_send(const void *src, size_t size);
 void app_uart_process(uint8_t *buf, uint32_t length);
 
 

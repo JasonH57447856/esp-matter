@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 
-#include "freertos/FreeRTOS.h"
-#include <ble/BLEEndPoint.h>
-#include <lib/support/CodeUtils.h>
-#include <platform/CHIPDeviceLayer.h>
+//#include "freertos/FreeRTOS.h"
+//#include <ble/BLEEndPoint.h>
+//#include <lib/support/CodeUtils.h>
+//#include <platform/CHIPDeviceLayer.h>
 
 #include "app_mqtt.h"
 #include "app_uart.h"
@@ -101,16 +101,14 @@ private:
 
     void DispatchEvent(AppEvent * event);
 
-    static void FunctionTimerEventHandler(AppEvent * aEvent);
-    static void FunctionHandler(AppEvent * aEvent);
+   // static void FunctionTimerEventHandler(AppEvent * aEvent);
+   // static void FunctionHandler(AppEvent * aEvent);
     static void LockActionEventHandler(AppEvent * aEvent);
-	//static void MqttActionEventHandler(AppEvent * aEvent);
-	//static void UartActionEventHandler(AppEvent * aEvent);
-    static void TimerEventHandler(TimerHandle_t xTimer);
+   // static void TimerEventHandler(TimerHandle_t xTimer);
 
 
 
-    void StartTimer(uint32_t aTimeoutMs);
+    //void StartTimer(uint32_t aTimeoutMs);
 
     static AppTask sAppTask;
 	//static MqttData_t sMqttData;

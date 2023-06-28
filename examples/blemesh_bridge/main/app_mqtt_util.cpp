@@ -14,7 +14,7 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "cJSON.h"
-#include "app_uart.h"
+#include "app_uart_util.h"
 #include "app_mqtt_util.h"
 #include "AppTask.h"
 //#include "c_base64.h"
