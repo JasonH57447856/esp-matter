@@ -16,7 +16,7 @@
 
 #include <app_bridged_device.h>
 #include <blemesh_bridge.h>
-#include <app_blemesh.h>
+//#include <app_blemesh.h>
 
 
 #include <app/clusters/door-lock-server/door-lock-server.h>
@@ -110,7 +110,7 @@ esp_err_t blemesh_bridge_attribute_update(uint16_t endpoint_id, uint32_t cluster
             if (attribute_id == OnOff::Attributes::OnOff::Id) {
                 ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
                          attribute_id);
-                app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
+                //app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
             }
         }
 		if (cluster_id == DoorLock::Id) {
@@ -118,8 +118,7 @@ esp_err_t blemesh_bridge_attribute_update(uint16_t endpoint_id, uint32_t cluster
             if (attribute_id == DoorLock::Attributes::LockState::Id) {
                 ESP_LOGD(TAG, "Update Bridged Device, ep: 0x%x, cluster: 0x%lx, att: 0x%lx", endpoint_id, cluster_id,
                          attribute_id);
-                //app_ble_mesh_onoff_set(bridged_device->dev_addr.blemesh_addr, val->val.b);
-				GetAppTask().PostLockActionRequest(1,val->val.b);
+				//GetAppTask().PostLockActionRequest(endpoint_id,val->val.b);
             }
         }
     }
@@ -145,6 +144,7 @@ bool emberAfPluginDoorLockOnDoorLockCommand(chip::EndpointId endpointId, const O
     attribute::get_val(attribute, &val);
     val.val.b = 1;
 	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
+	GetAppTask().PostLockActionRequest(endpointId,1);
 
 
     return true;
@@ -162,6 +162,7 @@ bool emberAfPluginDoorLockOnDoorUnlockCommand(chip::EndpointId endpointId, const
     attribute::get_val(attribute, &val);
     val.val.b = 0;
 	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
+	GetAppTask().PostLockActionRequest(endpointId,0);
 
     return true;
 }

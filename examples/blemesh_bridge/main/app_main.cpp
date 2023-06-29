@@ -17,10 +17,9 @@
 #include <app_bridged_device.h>
 
 #include "blemesh_bridge.h"
-#include "app_blemesh.h"
+//#include "app_blemesh.h"
 
 #include "AppTask.h"
-
 
 
 static const char *TAG = "app_main";
@@ -34,14 +33,11 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
 {
     switch (event->Type) {
     case chip::DeviceLayer::DeviceEventType::kInterfaceIpAddressChanged:
-        ESP_LOGI(TAG, "Interface IP Address Changed");
-	    //if(event->InterfaceIpAddressChanged.Type == chip::DeviceLayer::InterfaceIpChangeType::kIpV4_Assigned)
-		//	
+        ESP_LOGI(TAG, "Interface IP Address Changed");	
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningComplete:
         ESP_LOGI(TAG, "Commissioning complete");
-		app_mqtt_init();
         break;
 
     case chip::DeviceLayer::DeviceEventType::kFailSafeTimerExpired:
@@ -63,6 +59,10 @@ static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
     case chip::DeviceLayer::DeviceEventType::kCommissioningWindowClosed:
         ESP_LOGI(TAG, "Commissioning window closed");
         break;
+    case chip::DeviceLayer::DeviceEventType::kServerReady:
+		ESP_LOGI(TAG, "Server is Ready");
+		GetAppTask().PostServiceInitActionRequest(0);
+		break;
 
     default:
         break;

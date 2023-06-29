@@ -30,20 +30,23 @@
 #define UART_SEND_EVENT_QUEUE_SIZE		  20
 
 
-#define UART_ACK
+//#define UART_ACK
 
 
 static const char * const TAG = "uart-util";
 
 BaseType_t sUartSendTaskHandle;
 QueueHandle_t sUartSendEventQueue;
+#ifdef UART_ACK
 SemaphoreHandle_t sUartSendSemaphore = NULL;
 TimerHandle_t sUartSendTimeoutTimer;
+#endif
+
 
 uint8_t SendingBuffer[TX_BUF_SIZE];
 uint32_t SendingBufferLen;
 
-
+#ifdef UART_ACK
 void CancelUartTimer(void)
 {
 	if (xTimerStop(sUartSendTimeoutTimer, 0) == pdFAIL)
@@ -67,6 +70,45 @@ void StartUartTimer(uint32_t aTimeoutInMs)
     	ESP_LOGI(TAG, "uart timer start() failed");
 	}
 }
+
+void app_uart_resend(const void *src, size_t size)
+{
+	
+	ESP_LOGI(TAG, "app_uart_send: %d", size);
+	//uart_write_bytes(EX_UART_NUM, src, size);
+
+    if (sUartSendEventQueue != NULL){
+		UartSendEvent event;
+	    event.Type              = UartSendEvent::kEventType_Data;
+	    event.len  = (uint32_t)size;
+		uint8_t* buffer = (uint8_t*) pvPortMalloc(event.len);
+		if(buffer){
+			memcpy(buffer, (uint8_t*)src, event.len);
+			event.buf = buffer;
+			if(xQueueSendToFront(sUartSendEventQueue, &event, (TickType_t)0)==ESP_FAIL){
+				 vPortFree(buffer);
+			     buffer = NULL;
+				}
+		}else{
+			ESP_LOGE(TAG, " uart resend pvPortMalloc error"); 
+		}
+   }
+}
+
+static void uart_timeout_callback(TimerHandle_t xTimer)
+{
+	static uint8_t retry_count = 0;
+	retry_count++;
+	if(retry_count<3){
+		app_uart_resend(SendingBuffer,SendingBufferLen);
+		}
+	else{
+		retry_count=0;
+		}	
+	xSemaphoreGive(sUartSendSemaphore);
+}
+
+#endif
 
 void UartReceiveEventHandler(AppEvent * aEvent)
 {
@@ -105,30 +147,6 @@ void app_uart_send(const void *src, size_t size)
    }
 }
 
-void app_uart_resend(const void *src, size_t size)
-{
-	
-	ESP_LOGI(TAG, "app_uart_send: %d", size);
-	//uart_write_bytes(EX_UART_NUM, src, size);
-
-    if (sUartSendEventQueue != NULL){
-		UartSendEvent event;
-	    event.Type              = UartSendEvent::kEventType_Data;
-	    event.len  = (uint32_t)size;
-		uint8_t* buffer = (uint8_t*) pvPortMalloc(event.len);
-		if(buffer){
-			memcpy(buffer, (uint8_t*)src, event.len);
-			event.buf = buffer;
-			if(xQueueSendToFront(sUartSendEventQueue, &event, (TickType_t)0)==ESP_FAIL){
-				 vPortFree(buffer);
-			     buffer = NULL;
-				}
-		}else{
-			ESP_LOGE(TAG, " uart send pvPortMalloc error");				    
-		}
-   }
-}
-
 static void uart_send_task(void * pvParameter)
 {
     UartSendEvent event;
@@ -155,20 +173,6 @@ static void uart_send_task(void * pvParameter)
     }
 }
 
-
-static void uart_timeout_callback(TimerHandle_t xTimer)
-{
-	static uint8_t retry_count = 0;
-	retry_count++;
-	if(retry_count<3){
-		app_uart_resend(SendingBuffer,SendingBufferLen);
-		}
-	else{
-		retry_count=0;
-		}	
-	xSemaphoreGive(sUartSendSemaphore);
-}
-
 esp_err_t uart_send_task_init(void)
 {
 	sUartSendEventQueue = xQueueCreate(UART_SEND_EVENT_QUEUE_SIZE, sizeof(UartSendEvent));
@@ -177,6 +181,7 @@ esp_err_t uart_send_task_init(void)
         ESP_LOGE(TAG, "Failed to allocate uart send event queue");
         return ESP_FAIL;
     }
+#ifdef UART_ACK	
     sUartSendSemaphore = xSemaphoreCreateBinary();
     if (sUartSendSemaphore == NULL)
     {
@@ -184,7 +189,7 @@ esp_err_t uart_send_task_init(void)
     }
 
 	sUartSendTimeoutTimer = xTimerCreate("UartSendTimeoutTimer", pdMS_TO_TICKS(UART_SEND_TIMEOUT_MS), pdFALSE, NULL, uart_timeout_callback);
-	
+#endif	
 
     sUartSendTaskHandle = xTaskCreate(uart_send_task, "uart_send_task", 2048, NULL, UART_SEND_TASK_PRIORITY, NULL);
     return sUartSendTaskHandle ? ESP_OK : ESP_FAIL;

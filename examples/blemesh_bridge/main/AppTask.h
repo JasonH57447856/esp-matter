@@ -28,7 +28,13 @@
 
 #include "app_mqtt.h"
 #include "app_uart.h"
+#include "app_sntp.h"
 
+#include <esp_matter.h>
+#include <esp_matter_core.h>
+
+using namespace chip;
+using namespace chip::app::Clusters;
 
 
 struct AppEvent;
@@ -44,6 +50,7 @@ struct AppEvent
         kEventType_Install,
         kEventType_Mqtt,
         kEventType_Uart,
+        kEventType_ServiceInit,
     };
 
     uint16_t Type;
@@ -60,9 +67,13 @@ struct AppEvent
         } TimerEvent;
         struct
         {
-            uint8_t Action;
-            int8_t Actor;
+            chip::EndpointId EndpointID;
+            bool Action;
         } LockEvent;
+        struct
+        {
+			uint8_t ServiceType;
+        } ServiceInitEvent;		
 		struct
         {
             uint32_t len;
@@ -86,7 +97,8 @@ public:
     esp_err_t StartAppTask();
     static void AppTaskMain(void * pvParameter);
 
-    void PostLockActionRequest(int8_t aActor, int8_t aAction);
+    void PostLockActionRequest(chip::EndpointId aEndpointID,  int8_t aAction);
+	esp_err_t PostServiceInitActionRequest(uint8_t type);
 	esp_err_t PostMqttActionRequest(uint32_t len, uint8_t* buf);
 	esp_err_t PostUartActionRequest(uint32_t len, uint8_t* buf);
     esp_err_t PostEvent(const AppEvent * event);
@@ -104,7 +116,7 @@ private:
    // static void FunctionTimerEventHandler(AppEvent * aEvent);
    // static void FunctionHandler(AppEvent * aEvent);
     static void LockActionEventHandler(AppEvent * aEvent);
-   // static void TimerEventHandler(TimerHandle_t xTimer);
+	static void ServiceInitActionEventHandler(AppEvent * aEvent);
 
 
 

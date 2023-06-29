@@ -16,7 +16,7 @@
  */
 
 #include "AppTask.h"
-#include <app_blemesh.h>
+#include <blemesh_bridge.h>
 #include "esp_log.h"
 #include "cJSON.h"
 #include <app_uart.h>
@@ -28,17 +28,22 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include <platform/CHIPDeviceLayer.h>
+#include "lockly_c_header.h"
+#include "lockly_c_encode.h"
+#include "uart_util.h"
 
 
 #define APP_TASK_NAME "Matter_Bridge"
 
+#define deviceUUID "4e0031003131470532353835"
+#define MasterCode "18753912"
+#define Password "12345678"
 
-//#define FACTORY_RESET_TRIGGER_TIMEOUT 3000
-//#define FACTORY_RESET_CANCEL_WINDOW_TIMEOUT 3000
+
+
 #define APP_EVENT_QUEUE_SIZE 20
 #define APP_TASK_STACK_SIZE (3000)
-#define APP_TASK_PRIORITY 2
-//#define STATUS_LED_GPIO_NUM GPIO_NUM_2 // Use LED1 (blue LED) as status LED on DevKitC
+#define APP_TASK_PRIORITY 3
 
 static const char * const TAG = "App-Task";
 
@@ -73,7 +78,6 @@ esp_err_t AppTask::StartAppTask()
     return sAppTaskHandle ? ESP_OK : ESP_FAIL;
 }
 
-				  
 
 esp_err_t AppTask::Init()
 {
@@ -90,9 +94,10 @@ esp_err_t AppTask::Init()
 	blemesh_bridge_match_bridged_door_lock(mac_addr);
 	app_uart_init();
 	uart_send_task_init();
-	if (ConnectivityMgr().IsWiFiStationProvisioned()){
+/*	if (ConnectivityMgr().IsWiFiStationProvisioned()){
 		app_mqtt_init();
-		}
+		app_sntp_init();
+		}*/
 
 	
     return err;
@@ -123,33 +128,41 @@ void AppTask::AppTaskMain(void * pvParameter)
 
     }
 }
-/*
-void AppTask::TimerEventHandler(TimerHandle_t xTimer)
-{
-    AppEvent event;
-    event.Type                = AppEvent::kEventType_Timer;
-    event.TimerEvent.Context = (void *) xTimer;
-    event.Handler             = FunctionTimerEventHandler;
-    sAppTask.PostEvent(&event);
-}
-
-void AppTask::FunctionTimerEventHandler(AppEvent * aEvent)
-{
-}
-*/
 
 void AppTask::LockActionEventHandler(AppEvent * aEvent)
 {
+   unsigned int Length;
+   unsigned char *buffer;
+   uint8_t bda[6];
+   ESP_LOGI(TAG, "LockActionEventHandler, lock endpoint: 0x%x, lock status: 0x%x", aEvent->LockEvent.EndpointID,aEvent->LockEvent.Action);
 
-   ESP_LOGI(TAG, "LockActionEventHandler, lock status: 0x%x", aEvent->LockEvent.Action);
+/*   updatePgAesKey((const unsigned char *)MasterCode,MASTER_CODE_LEN,(const unsigned char *)deviceUUID,(DEVICE_UUID_LEN * 2));
+   buffer = encodeOpenCloseCmd(&Length,
+									   2,
+									   (unsigned char *)Password,
+									   8,
+									   1,
+									   aEvent->LockEvent.Action,
+									   PGCCmdSrc_alexa,
+									   PGCEnType_alexa);
+   uart_sent_ble_data((esp_bd_addr_t *)bda, buffer, Length, 100,200);
+   free(buffer);*/
 
 }
 
-void AppTask::PostLockActionRequest(int8_t aActor, int8_t aAction)
+void AppTask::ServiceInitActionEventHandler(AppEvent * aEvent)
+{
+   ESP_LOGI(TAG, "ServiceInitActionEventHandler, ServiceType: 0x%x", aEvent->ServiceInitEvent.ServiceType);
+   app_mqtt_init();
+   app_sntp_init();
+
+}
+
+void AppTask::PostLockActionRequest(chip::EndpointId aEndpointID, int8_t aAction)
 {
     AppEvent event;
     event.Type              = AppEvent::kEventType_Lock;
-    event.LockEvent.Actor  = aActor;
+    event.LockEvent.EndpointID  = aEndpointID;
     event.LockEvent.Action = aAction;
     event.Handler           = LockActionEventHandler;
     PostEvent(&event);
@@ -175,6 +188,14 @@ esp_err_t AppTask::PostUartActionRequest(uint32_t len, uint8_t* buf)
     return PostEvent(&event);
 }
 
+esp_err_t AppTask::PostServiceInitActionRequest(uint8_t type)
+{
+    AppEvent event;
+    event.Type              = AppEvent::kEventType_ServiceInit;
+    event.ServiceInitEvent.ServiceType  = type;
+    event.Handler           =ServiceInitActionEventHandler;
+    return PostEvent(&event);
+}
 
 esp_err_t AppTask::PostEvent(const AppEvent * aEvent)
 {
