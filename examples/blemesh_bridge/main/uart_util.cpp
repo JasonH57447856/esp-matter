@@ -82,7 +82,9 @@ void uart_sent_ble_data(esp_bd_addr_t *bda, uint8_t *data, uint16_t data_len, ui
     pos+=sizeof(max_idle_time);
     memcpy(output_buf+pos,data,data_len);
     app_uart_send((const char *) output_buf, packet_len);
+	 esp_log_buffer_hex(UART_TAG, output_buf, packet_len);
 }
+
 /*
 bool uart_read_data(ble_cb_param_pt cmd, uint16_t timeout){
 	int cycle = (int)timeout/100;

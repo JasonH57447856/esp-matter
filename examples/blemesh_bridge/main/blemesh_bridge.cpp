@@ -144,7 +144,7 @@ bool emberAfPluginDoorLockOnDoorLockCommand(chip::EndpointId endpointId, const O
     attribute::get_val(attribute, &val);
     val.val.b = 1;
 	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
-	GetAppTask().PostLockActionRequest(endpointId,1);
+	GetAppTask().PostLockActionRequest(endpointId,0);
 
 
     return true;
@@ -162,7 +162,7 @@ bool emberAfPluginDoorLockOnDoorUnlockCommand(chip::EndpointId endpointId, const
     attribute::get_val(attribute, &val);
     val.val.b = 0;
 	attribute::update(endpointId, DoorLock::Id, DoorLock::Attributes::LockState::Id, &val);
-	GetAppTask().PostLockActionRequest(endpointId,0);
+	GetAppTask().PostLockActionRequest(endpointId,1);
 
     return true;
 }

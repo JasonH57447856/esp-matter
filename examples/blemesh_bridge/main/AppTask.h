@@ -59,8 +59,9 @@ struct AppEvent
     {
         struct
         {
-            uint8_t Action;
-        } ButtonEvent;
+            uint8_t mPinNo;
+            uint8_t mAction;
+        } ButtonEvent;		
         struct
         {
             void * Context;
@@ -102,6 +103,7 @@ public:
 	esp_err_t PostMqttActionRequest(uint32_t len, uint8_t* buf);
 	esp_err_t PostUartActionRequest(uint32_t len, uint8_t* buf);
     esp_err_t PostEvent(const AppEvent * event);
+	void ButtonEventHandler(uint8_t btnIdx, uint8_t btnAction);
 
 
 
@@ -112,18 +114,30 @@ private:
 
 
     void DispatchEvent(AppEvent * event);
+    void StartTimer(uint32_t aTimeoutMs);
+    void CancelTimer(void);
 
-   // static void FunctionTimerEventHandler(AppEvent * aEvent);
-   // static void FunctionHandler(AppEvent * aEvent);
+    static void FunctionTimerEventHandler(AppEvent * aEvent);
+    static void FunctionHandler(AppEvent * aEvent);	
+    static void TimerEventHandler(TimerHandle_t xTimer);
     static void LockActionEventHandler(AppEvent * aEvent);
 	static void ServiceInitActionEventHandler(AppEvent * aEvent);
 
+    enum Function_t
+    {
+        kFunction_NoneSelected   = 0,
+        kFunction_SoftwareUpdate = 0,
+        kFunction_StartBleAdv    = 1,
+        kFunction_FactoryReset   = 2,
 
+        kFunction_Invalid
+    } Function;
 
-    //void StartTimer(uint32_t aTimeoutMs);
+    Function_t mFunction;
+    bool mFunctionTimerActive;
+
 
     static AppTask sAppTask;
-	//static MqttData_t sMqttData;
 };
 
 inline AppTask & GetAppTask(void)

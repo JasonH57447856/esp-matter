@@ -9,12 +9,8 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "esp_attr.h"
-#include "nvs_flash.h"
 #include "esp_sntp.h"
 
 static const char *TAG = "sntp";
@@ -31,17 +27,7 @@ static const char *TAG = "sntp";
  * maintains its value when ESP32 wakes from deep sleep.
  */
 
-static void obtain_time(void);
 static void initialize_sntp(void);
-
-#ifdef CONFIG_SNTP_TIME_SYNC_METHOD_CUSTOM
-void sntp_sync_time(struct timeval *tv)
-{
-   settimeofday(tv, NULL);
-   ESP_LOGI(TAG, "Time is synchronized from custom code");
-   sntp_set_sync_status(SNTP_SYNC_STATUS_COMPLETED);
-}
-#endif
 
 void time_sync_notification_cb(struct timeval *tv)
 {
@@ -76,7 +62,14 @@ void app_sntp_init(void)
     initialize_sntp();
 }
 
-
+int64_t get_timestamp_us(void)
+{
+	struct timeval tv_now;
+	int64_t time_us; 
+	gettimeofday(&tv_now, NULL);	
+	time_us	= (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+	return time_us;
+}
 static void initialize_sntp(void)
 {
     ESP_LOGI(TAG, "Initializing SNTP");

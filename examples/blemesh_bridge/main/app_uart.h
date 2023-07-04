@@ -16,8 +16,8 @@ extern "C" {
 #include "driver/gpio.h"
 
 #define EX_UART_NUM UART_NUM_2
-#define TXD2_PIN 			(GPIO_NUM_16)
-#define RXD2_PIN 			(GPIO_NUM_17)
+#define TXD2_PIN 			(GPIO_NUM_17)
+#define RXD2_PIN 			(GPIO_NUM_16)
 
 
 #define PATTERN_CHR_NUM    (3)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/

@@ -73,26 +73,37 @@ void StartUartTimer(uint32_t aTimeoutInMs)
 
 void app_uart_resend(const void *src, size_t size)
 {
+		BaseType_t status;
+		ESP_LOGI(TAG, "app_uart_send: %d", size);
+		//uart_write_bytes(EX_UART_NUM, src, size);
 	
-	ESP_LOGI(TAG, "app_uart_send: %d", size);
-	//uart_write_bytes(EX_UART_NUM, src, size);
-
-    if (sUartSendEventQueue != NULL){
-		UartSendEvent event;
-	    event.Type              = UartSendEvent::kEventType_Data;
-	    event.len  = (uint32_t)size;
-		uint8_t* buffer = (uint8_t*) pvPortMalloc(event.len);
-		if(buffer){
-			memcpy(buffer, (uint8_t*)src, event.len);
-			event.buf = buffer;
-			if(xQueueSendToFront(sUartSendEventQueue, &event, (TickType_t)0)==ESP_FAIL){
-				 vPortFree(buffer);
-			     buffer = NULL;
+		if (sUartSendEventQueue != NULL){
+			UartSendEvent event;
+			event.Type				= UartSendEvent::kEventType_Data;
+			event.len  = (uint32_t)size;
+			uint8_t* buffer = (uint8_t*) pvPortMalloc(event.len);
+			if(buffer){
+				memcpy(buffer, (uint8_t*)src, event.len);
+				event.buf = buffer;			
+			if (xPortInIsrContext())
+			{
+				BaseType_t higherPrioTaskWoken = pdFALSE;
+				status						   = xQueueSendToFrontFromISR(sUartSendEventQueue, &event, &higherPrioTaskWoken);
+			}
+			else
+			{
+				status = xQueueSendToFront(sUartSendEventQueue, &event, (TickType_t)1);
+			}
+			if (!status)
+				{
+					ESP_LOGE(TAG, "Failed to post event to uart send event queue");
 				}
-		}else{
-			ESP_LOGE(TAG, " uart resend pvPortMalloc error"); 
-		}
-   }
+			
+			}else{
+				ESP_LOGE(TAG, " uart send pvPortMalloc error"); 				
+			}
+	   }
+
 }
 
 static void uart_timeout_callback(TimerHandle_t xTimer)
@@ -125,7 +136,7 @@ void UartReceiveEventHandler(AppEvent * aEvent)
 
 void app_uart_send(const void *src, size_t size)
 {
-	
+	BaseType_t status;
 	ESP_LOGI(TAG, "app_uart_send: %d", size);
 	//uart_write_bytes(EX_UART_NUM, src, size);
 
@@ -137,10 +148,26 @@ void app_uart_send(const void *src, size_t size)
 		if(buffer){
 			memcpy(buffer, (uint8_t*)src, event.len);
 			event.buf = buffer;
+/*		
 			if(xQueueSend(sUartSendEventQueue, &event, (TickType_t)0)==ESP_FAIL){
 				 vPortFree(buffer);
 			     buffer = NULL;
 				}
+*/			
+        if (xPortInIsrContext())
+        {
+            BaseType_t higherPrioTaskWoken = pdFALSE;
+            status                         = xQueueSendFromISR(sUartSendEventQueue, &event, &higherPrioTaskWoken);
+        }
+        else
+        {
+            status = xQueueSend(sUartSendEventQueue, &event, (TickType_t)1);
+        }
+        if (!status)
+        	{
+            	ESP_LOGE(TAG, "Failed to post event to uart send event queue");
+        	}
+		
 		}else{
 			ESP_LOGE(TAG, " uart send pvPortMalloc error");				    
 		}

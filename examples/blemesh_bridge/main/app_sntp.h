@@ -14,6 +14,7 @@ extern "C" {
 
 
 void app_sntp_init(void);
+int64_t get_timestamp_us(void);
 
 #ifdef __cplusplus
 }
