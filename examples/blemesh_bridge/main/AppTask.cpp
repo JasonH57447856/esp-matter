@@ -181,16 +181,17 @@ void AppTask::AppTaskMain(void * pvParameter)
 		{
 			sRedLED.Blink(50, 950);
 		}
-	}
-	
-	sRedLED.Animate();
+	}else if(sAppTask.mFunction == kFunction_FactoryReset)
+		sRedLED.Blink(500, 500);
+	//sRedLED.Animate();
 	
 	Clock::Timestamp now			= SystemClock().GetMonotonicTimestamp();
 	Clock::Timestamp nextChangeTime = lastChangeTime + Clock::Seconds16(5);
 	
 	if (nextChangeTime < now)
 	{
-		lastChangeTime = now;
+		lastChangeTime = now;	
+    	ESP_LOGI(TAG, "[APP] Free memory: %"PRIX32" bytes", esp_get_free_heap_size());
 	}
 	if (resetButton.Poll())
 	{
@@ -257,8 +258,8 @@ void AppTask::FunctionTimerEventHandler(AppEvent * aEvent)
 
         // Turn off all LEDs before starting blink to make sure blink is
         // co-ordinated.
-        sRedLED.Set(false);
-        sRedLED.Blink(500,500);
+        //sRedLED.Set(false);
+        //sRedLED.Blink(500,500);
     }
     else if (sAppTask.mFunctionTimerActive && sAppTask.mFunction == kFunction_FactoryReset)
     {
@@ -317,8 +318,8 @@ void AppTask::FunctionHandler(AppEvent * aEvent)
 
             // Change the function to none selected since factory reset has been
             // canceled.
-            sAppTask.mFunction = kFunction_NoneSelected;
-
+            sAppTask.mFunction = kFunction_NoneSelected;			
+			sRedLED.Set(true);
             ESP_LOGI(TAG, "Factory Reset has been Canceled");
         }
     }
