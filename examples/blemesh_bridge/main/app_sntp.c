@@ -31,11 +31,11 @@ static void initialize_sntp(void);
 
 void time_sync_notification_cb(struct timeval *tv)
 {
-    time_t now;
+   time_t now;
     struct tm timeinfo;
 
     ESP_LOGI(TAG, "Notification of a time synchronization event");
-	    time(&now);
+	time(&now);
 
     char strftime_buf[64];
 
@@ -62,13 +62,13 @@ void app_sntp_init(void)
     initialize_sntp();
 }
 
-int64_t get_timestamp_us(void)
+int64_t get_timestamp_ms(void)
 {
 	struct timeval tv_now;
 	int64_t time_us; 
 	gettimeofday(&tv_now, NULL);	
 	time_us	= (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
-	return time_us;
+	return time_us/1000;
 }
 static void initialize_sntp(void)
 {
@@ -97,7 +97,7 @@ static void initialize_sntp(void)
     sntp_setservername(1, "pool.ntp.org");     // set the secondary NTP server (will be used only if SNTP_MAX_SERVERS > 1)
 #endif
 
-    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+//    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
 #ifdef CONFIG_SNTP_TIME_SYNC_METHOD_SMOOTH
     sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
 #endif

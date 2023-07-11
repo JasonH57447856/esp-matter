@@ -190,8 +190,10 @@ void AppTask::AppTaskMain(void * pvParameter)
 	
 	if (nextChangeTime < now)
 	{
-		lastChangeTime = now;	
-    	ESP_LOGI(TAG, "[APP] Free memory: %"PRIX32" bytes", esp_get_free_heap_size());
+		lastChangeTime = now;			
+		uint64_t timestamp = get_timestamp_ms();
+		//ESP_LOGI(TAG, "timestamp: %"PRIX64" ", timestamp);
+    	ESP_LOGI(TAG, "timestamp: %"PRIX64" ====[APP] Free memory: %"PRIX32" bytes",timestamp, esp_get_free_heap_size());		
 	}
 	if (resetButton.Poll())
 	{
@@ -362,9 +364,9 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
    unsigned char *buffer;
    uint8_t bda[6];
    ESP_LOGI(TAG, "LockActionEventHandler, lock endpoint: 0x%x, lock status: 0x%x", aEvent->LockEvent.EndpointID,aEvent->LockEvent.Action);
-   uint64_t timestamp = get_timestamp_us()/1000;
+   uint64_t timestamp = get_timestamp_ms();
    
-   ESP_LOGI(TAG, "MasterCode：");
+/*   ESP_LOGI(TAG, "MasterCode：");
    esp_log_buffer_hex(TAG, (const unsigned char *)MasterCode, MASTER_CODE_LEN);
    ESP_LOGI(TAG, "deviceUUID:");
    esp_log_buffer_hex(TAG, (const unsigned char *)deviceUUID, DEVICE_UUID_LEN);
@@ -372,7 +374,7 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
    esp_log_buffer_hex(TAG, (const unsigned char *)Password, sizeof(Password));
    ESP_LOGI(TAG, "timestamp: %"PRIX64" ", timestamp);
    ESP_LOGI(TAG, "LockEvent.Action: %d", aEvent->LockEvent.Action);   
-   ESP_LOGI(TAG, "PGCCmdSrc_alexa: %d", PGCCmdSrc_alexa);
+   ESP_LOGI(TAG, "PGCCmdSrc_alexa: %d", PGCCmdSrc_alexa);*/
 
    updatePgAesKey((const unsigned char *)MasterCode,MASTER_CODE_LEN,(const unsigned char *)deviceUUID,(DEVICE_UUID_LEN * 2));
    buffer = encodeOpenCloseCmd_Test(&Length,
@@ -390,6 +392,10 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
    bda[3] = 0x11;
    bda[4] = 0x26;
    bda[5] = 0xa5;
+   
+  /* unsigned char buf[57];
+   buffer = buf;
+   Length = 57;*/
    uart_sent_ble_data((esp_bd_addr_t *)bda, buffer, Length, 10000,10000);
    free(buffer);
 
