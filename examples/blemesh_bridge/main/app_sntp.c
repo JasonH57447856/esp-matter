@@ -70,6 +70,8 @@ int64_t get_timestamp_ms(void)
 	time_us	= (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
 	return time_us/1000;
 }
+
+
 static void initialize_sntp(void)
 {
     ESP_LOGI(TAG, "Initializing SNTP");

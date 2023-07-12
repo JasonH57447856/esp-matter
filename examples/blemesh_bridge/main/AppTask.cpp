@@ -16,7 +16,6 @@
  */
 
 #include "AppTask.h"
-#include <blemesh_bridge.h>
 #include "esp_log.h"
 #include "cJSON.h"
 #include <app_uart.h>
@@ -37,12 +36,17 @@
 #include "uart_util.h"
 #include "driver/gpio.h"
 
+#include <esp_matter.h>
+#include <esp_matter_core.h>
+#include <esp_matter_bridge.h>
+
+#include <app_bridged_device.h>
+#include <blemesh_bridge.h>
+
 
 #define APP_TASK_NAME "Matter_Bridge"
 
-#define deviceUUID "250045003437470734383732"
-#define MasterCode "92210994"
-#define Password "111555"
+
 
 
 #define SYSTEM_STATE_LED GPIO_NUM_18
@@ -82,6 +86,7 @@ StackType_t appStack[APP_TASK_STACK_SIZE / sizeof(StackType_t)];
 
 using namespace ::chip::DeviceLayer;
 using namespace ::chip::System;
+using namespace esp_matter;
 
 AppTask AppTask::sAppTask;
 
@@ -116,9 +121,8 @@ esp_err_t AppTask::Init()
 	sGreenLED.Init(SYSTEM_STATE_LED_GREEN);
     resetButton.Init(APP_FUNCTION_BUTTON, APP_BUTTON_DEBOUNCE_PERIOD_MS);
     sRedLED.Set(true);
-    sGreenLED.Set(true);	
-	uint8_t mac_addr[6] = {11,22,33,44,55,66};
-	blemesh_bridge_match_bridged_door_lock(mac_addr);
+    sGreenLED.Set(true);
+	
 	app_uart_init();
 	uart_send_task_init();
 	if (ConnectivityMgr().IsWiFiStationProvisioned()){
@@ -193,7 +197,7 @@ void AppTask::AppTaskMain(void * pvParameter)
 		lastChangeTime = now;			
 		uint64_t timestamp = get_timestamp_ms();
 		//ESP_LOGI(TAG, "timestamp: %"PRIX64" ", timestamp);
-    	ESP_LOGI(TAG, "timestamp: %"PRIX64" ====[APP] Free memory: %"PRIX32" bytes",timestamp, esp_get_free_heap_size());		
+    	ESP_LOGI(TAG, "timestamp: %" PRIX64 " ====[APP] Free memory: %" PRIX32 " bytes",timestamp, esp_get_free_heap_size());		
 	}
 	if (resetButton.Poll())
 	{
@@ -362,10 +366,10 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
 {
    unsigned int Length;
    unsigned char *buffer;
-   uint8_t bda[6];
    ESP_LOGI(TAG, "LockActionEventHandler, lock endpoint: 0x%x, lock status: 0x%x", aEvent->LockEvent.EndpointID,aEvent->LockEvent.Action);
    uint64_t timestamp = get_timestamp_ms();
-   
+   app_bridged_device_t *device;
+   device = app_bridge_get_device_by_matter_endpointid((uint16_t)aEvent->LockEvent.EndpointID);    
 /*   ESP_LOGI(TAG, "MasterCode：");
    esp_log_buffer_hex(TAG, (const unsigned char *)MasterCode, MASTER_CODE_LEN);
    ESP_LOGI(TAG, "deviceUUID:");
@@ -375,7 +379,7 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
    ESP_LOGI(TAG, "timestamp: %"PRIX64" ", timestamp);
    ESP_LOGI(TAG, "LockEvent.Action: %d", aEvent->LockEvent.Action);   
    ESP_LOGI(TAG, "PGCCmdSrc_alexa: %d", PGCCmdSrc_alexa);*/
-
+/*
    updatePgAesKey((const unsigned char *)MasterCode,MASTER_CODE_LEN,(const unsigned char *)deviceUUID,(DEVICE_UUID_LEN * 2));
    buffer = encodeOpenCloseCmd_Test(&Length,
 									   2,
@@ -386,18 +390,37 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
 									   PGCCmdSrc_alexa,
 									   PGCEnType_alexa,
 									   (unsigned char *)&timestamp);
+									   
+   uint8_t bda[6];
    bda[0] = 0x58;
    bda[1] = 0x7a;
    bda[2] = 0x62;
    bda[3] = 0x11;
    bda[4] = 0x26;
    bda[5] = 0xa5;
-   
-  /* unsigned char buf[57];
-   buffer = buf;
-   Length = 57;*/
    uart_sent_ble_data((esp_bd_addr_t *)bda, buffer, Length, 10000,10000);
-   free(buffer);
+   free(buffer);*/
+
+   ESP_LOGI(TAG, "MasterCode：");
+   esp_log_buffer_hex(TAG, (const unsigned char *)device->dev_info.master_code, 9);
+   ESP_LOGI(TAG, "deviceUUID:");
+   esp_log_buffer_hex(TAG, (const unsigned char *)device->dev_info.device_uuid, 25);
+   ESP_LOGI(TAG, "Password:");
+   esp_log_buffer_hex(TAG, (const unsigned char *)device->dev_info.password, 9);
+   ESP_LOGI(TAG, "MacAddress:");
+   esp_log_buffer_hex(TAG, (const unsigned char *)device->dev_addr.espnow_macaddr, 6);  
+   updatePgAesKey((const unsigned char *)device->dev_info.master_code,MASTER_CODE_LEN,(const unsigned char *)device->dev_info.device_uuid,(DEVICE_UUID_LEN * 2));
+   buffer = encodeOpenCloseCmd_Test(&Length,
+									   2,
+									   (unsigned char *)device->dev_info.password,
+									   device->dev_info.password_len,
+									   0,
+									   aEvent->LockEvent.Action,
+									   PGCCmdSrc_alexa,
+									   PGCEnType_alexa,
+									   (unsigned char *)&timestamp);   
+	uart_sent_ble_data((esp_bd_addr_t *)device->dev_addr.espnow_macaddr, buffer, Length, 10000,10000);
+	free(buffer);
 
 }
 

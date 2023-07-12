@@ -1,6 +1,7 @@
 
 
-set(PRIV_REQUIRES_LIST device esp_matter app_bridge)
+#set(PRIV_REQUIRES_LIST device esp_matter app_bridge)
+set(PRIV_REQUIRES_LIST device esp_matter esp_matter_bridge)
 
 idf_component_register(SRC_DIRS          "."
 					 "${CMAKE_CURRENT_LIST_DIR}/lockly_c/."

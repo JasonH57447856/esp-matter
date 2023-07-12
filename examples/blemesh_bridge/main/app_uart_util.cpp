@@ -148,12 +148,7 @@ void app_uart_send(const void *src, size_t size)
 		if(buffer){
 			memcpy(buffer, (uint8_t*)src, event.len);
 			event.buf = buffer;
-/*		
-			if(xQueueSend(sUartSendEventQueue, &event, (TickType_t)0)==ESP_FAIL){
-				 vPortFree(buffer);
-			     buffer = NULL;
-				}
-*/			
+			
         if (xPortInIsrContext())
         {
             BaseType_t higherPrioTaskWoken = pdFALSE;
