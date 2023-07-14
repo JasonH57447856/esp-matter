@@ -52,7 +52,6 @@ typedef union {
         uint8_t master_code[8+1];
         uint8_t device_uuid[24+1];		
 		uint8_t password[8+1];
-		uint8_t password_len;
     };
 } app_bridged_device_info_t;
 
@@ -111,5 +110,7 @@ app_bridged_device_t *app_bridge_get_device_by_espnow_macaddr(uint8_t espnow_mac
 uint16_t app_bridge_get_matter_endpointid_by_espnow_macaddr(uint8_t espnow_macaddr[6]);
 
 uint8_t* app_bridge_get_espnow_macaddr_by_matter_endpointid(uint16_t matter_endpointid);
+app_bridged_device_t *app_bridge_get_device_by_device_uuid(uint8_t *uuid);
+esp_err_t app_bridge_store_bridged_device_info(app_bridged_device_t *bridged_device);
 
 

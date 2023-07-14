@@ -16,25 +16,6 @@
 
 #define UART_TAG 		"UART_UTIL"
 
-#define PACKET_LEN_POS			(4)
-#define HEAD_FIELD_LEN			(4)
-#define PACKET_LEN_FIELD_LEN	(2)
-#define CMD_TYPE_FIELD_LEN		(1)
-#define CMD_RET_FIELD_LEN		(1)
-#define BLE_SEND_RET_POS		(HEAD_FIELD_LEN + PACKET_LEN_FIELD_LEN + CMD_TYPE_FIELD_LEN)
-#define BLE_SEND_ACK_POS		(BLE_SEND_RET_POS + CMD_RET_FIELD_LEN)
-
-#define BLE_CLOSE_RET_POS		BLE_SEND_RET_POS
-
-#define BLE_SCAN_CNT_LEN		(1)
-#define BLE_SCAN_RET_POS		(HEAD_FIELD_LEN + PACKET_LEN_FIELD_LEN + CMD_TYPE_FIELD_LEN)
-#define BLE_SCAN_CNT_POS		(BLE_SCAN_RET_POS + CMD_RET_FIELD_LEN)
-#define BLE_SCAN_DATA_POS       (BLE_SCAN_CNT_POS + BLE_SCAN_CNT_LEN)
-#define BLE_SCAN_BDA_LEN        (6)
-#define BLE_SCAN_RSSI_LEN       (4)
-#define BLE_SCAN_NAME_LEN		(40)
-#define BLE_SCAN_DATA_LEN       (BLE_SCAN_BDA_LEN + BLE_SCAN_RSSI_LEN + BLE_SCAN_NAME_LEN)
-
 uint8_t CMD_HEAD[4] = {0xf6,0xe5,0xd4,0xc3};
 
 uint8_t data_line[BUF_LINE_SIZE];
@@ -82,7 +63,6 @@ void uart_sent_ble_data(esp_bd_addr_t *bda, uint8_t *data, uint16_t data_len, ui
     pos+=sizeof(max_idle_time);
     memcpy(output_buf+pos,data,data_len);
     app_uart_send((const char *) output_buf, packet_len);
-	 esp_log_buffer_hex(UART_TAG, output_buf, packet_len);
 }
 
 /*

@@ -16,6 +16,7 @@
 #include "cJSON.h"
 #include "app_uart.h"
 #include "app_uart_util.h"
+#include "uart_util.h"
 #include "AppTask.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
@@ -23,6 +24,14 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/timers.h"
+#include "esp_sntp.h"
+#include <esp_matter.h>
+#include <esp_matter_core.h>
+#include <esp_matter_bridge.h>
+
+#include <app_bridged_device.h>
+#include <blemesh_bridge.h>
+#include "app_mqtt_util.h"
 
 #define UART_SEND_TIMEOUT_MS 300
 
@@ -33,7 +42,7 @@
 //#define UART_ACK
 
 
-static const char * const TAG = "uart-util";
+static const char * const TAG = "app-uart-util";
 
 BaseType_t sUartSendTaskHandle;
 QueueHandle_t sUartSendEventQueue;
@@ -124,7 +133,39 @@ static void uart_timeout_callback(TimerHandle_t xTimer)
 void UartReceiveEventHandler(AppEvent * aEvent)
 {
 	if(aEvent->UartEvent.buf){	
-		ESP_LOGI(TAG, "UART Data=%s", aEvent->UartEvent.buf);
+		ESP_LOGI(TAG, "UartReceiveEventHandler");
+		esp_log_buffer_hex(TAG, aEvent->UartEvent.buf, aEvent->UartEvent.len);
+		if(!memcmp(aEvent->UartEvent.buf,CMD_HEAD,HEAD_FIELD_LEN)){
+			switch (aEvent->UartEvent.buf[CMD_MODE_POS])
+			{
+			case UART_CMD_SCAN:
+				 uint8_t device_cnt = aEvent->UartEvent.buf[BLE_SCAN_CNT_POS];				 
+				 uint8_t mac_addr[6]={0};
+				 if(device_cnt > 0){
+					app_bridged_device_info_t bridged_device_info;			
+					memcpy(mac_addr,&aEvent->UartEvent.buf[BLE_SCAN_DATA_POS],BLE_SCAN_BDA_LEN);
+					strcpy((char *)bridged_device_info.master_code, (const char *)&sMqttDataCache.bindHubAndLockRequest.masterCode);	
+					strcpy((char *)bridged_device_info.password, (const char *)&sMqttDataCache.bindHubAndLockRequest.hostCode);
+					strcpy((char *)bridged_device_info.device_uuid, (const char *)&sMqttDataCache.bindHubAndLockRequest.deviceId);
+					blemesh_bridge_match_bridged_door_lock(mac_addr,bridged_device_info);
+					sMqttDataCache.status = ESP_OK;					
+				 }
+				 else{
+				 	sMqttDataCache.status = ESP_FAIL;	
+				 }
+			 	mac_bin2str((char *)mac_addr,(char *)&sMqttDataCache.bindHubAndLockRequest.macAddr, 18);
+				if(sMqttDataCache.bindHubAndLockRequest.cacheActive==true){
+					if(strcmp((const char *)&sMqttDataCache.bindHubAndLockRequest.deviceName[0],(const char *)&aEvent->UartEvent.buf[BLE_SCAN_Name_POS])==0)
+						MqttSendCommandResponse(&sMqttDataCache);
+				}
+				memset(&sMqttDataCache, 0, sizeof(sMqttDataCache));
+			 break;
+			}
+		}
+		else{
+			ESP_LOGE(TAG, " Received Unexpected Data"); 
+		}
+			
 #ifdef UART_ACK
 		xSemaphoreGive(sUartSendSemaphore);
 		CancelUartTimer();
@@ -179,7 +220,8 @@ static void uart_send_task(void * pvParameter)
     {
         BaseType_t eventReceived = xQueueReceive(sUartSendEventQueue, &event, portMAX_DELAY);
         while (eventReceived == pdTRUE)
-        {
+        {        
+			esp_log_buffer_hex(TAG, event.buf, event.len);
             uart_write_bytes(EX_UART_NUM, event.buf, event.len);
 			SendingBufferLen = event.len;			
 			memcpy(SendingBuffer, event.buf, event.len);

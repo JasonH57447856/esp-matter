@@ -19,7 +19,7 @@
 #define UART_TASK_PRIORITY           12
 
 
-static const char *TAG = "uart_events";
+static const char *TAG = "uart_receive";
 
 /**
  * This example shows how to use the UART driver to handle special UART events.
@@ -55,9 +55,8 @@ static void uart_event_task(void *pvParameters)
                 case UART_DATA:
                     ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
                     uart_read_bytes(EX_UART_NUM, dtmp, event.size, portMAX_DELAY);				
-					esp_log_buffer_hex(TAG, dtmp, event.size);
+					//esp_log_buffer_hex(TAG, dtmp, event.size);
 					app_uart_process(dtmp, event.size);                    
-                    //uart_write_bytes(EX_UART_NUM, (const char*) dtmp, event.size);
                     break;
                 //Event of HW FIFO overflow detected
                 case UART_FIFO_OVF:

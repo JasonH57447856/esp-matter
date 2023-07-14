@@ -45,6 +45,18 @@ typedef union {
     };
 } app_bridged_device_address_t;
 
+/* Bridged Device Info */
+typedef union {
+    /** Lock */
+    struct {
+        uint8_t master_code[8];
+        uint8_t device_uuid[24];		
+		uint8_t password[8];
+		uint8_t password_len;
+    };
+} app_bridged_device_info_t;
+
+
 /* Bridged Device */
 typedef struct app_bridged_device {
     /** Bridged Device */
@@ -53,6 +65,8 @@ typedef struct app_bridged_device {
     app_bridged_device_type_t dev_type;
     /** Address of Bridged Device */
     app_bridged_device_address_t dev_addr;
+	
+    app_bridged_device_info_t dev_info;
     /** Pointer of Next Bridged Device */
     struct app_bridged_device *next;
 } app_bridged_device_t;
@@ -94,3 +108,5 @@ app_bridged_device_t *app_bridge_get_device_by_espnow_macaddr(uint8_t espnow_mac
 uint16_t app_bridge_get_matter_endpointid_by_espnow_macaddr(uint8_t espnow_macaddr[6]);
 
 uint8_t* app_bridge_get_espnow_macaddr_by_matter_endpointid(uint16_t matter_endpointid);
+app_bridged_device_t *app_bridge_get_device_by_matter_endpointid(uint16_t matter_endpointid);
+

@@ -36,6 +36,28 @@ typedef uint8_t esp_bd_addr_t[6];
 
 #define CMD_MODE_POS		(6)
 
+#define PACKET_LEN_POS			(4)
+#define HEAD_FIELD_LEN			(4)
+#define PACKET_LEN_FIELD_LEN	(2)
+#define CMD_TYPE_FIELD_LEN		(1)
+#define CMD_RET_FIELD_LEN		(1)
+#define BLE_SEND_RET_POS		(HEAD_FIELD_LEN + PACKET_LEN_FIELD_LEN + CMD_TYPE_FIELD_LEN)
+#define BLE_SEND_ACK_POS		(BLE_SEND_RET_POS + CMD_RET_FIELD_LEN)
+
+#define BLE_CLOSE_RET_POS		BLE_SEND_RET_POS
+
+#define BLE_SCAN_CNT_LEN		(1)
+#define BLE_SCAN_RET_POS		(HEAD_FIELD_LEN + PACKET_LEN_FIELD_LEN + CMD_TYPE_FIELD_LEN)
+#define BLE_SCAN_CNT_POS		(BLE_SCAN_RET_POS + CMD_RET_FIELD_LEN)
+#define BLE_SCAN_DATA_POS       (BLE_SCAN_CNT_POS + BLE_SCAN_CNT_LEN)
+#define BLE_SCAN_BDA_LEN        (6)
+#define BLE_SCAN_RSSI_LEN       (4)
+#define BLE_SCAN_Name_POS		(BLE_SCAN_DATA_POS+BLE_SCAN_BDA_LEN+BLE_SCAN_RSSI_LEN)
+#define BLE_SCAN_NAME_LEN		(40)
+#define BLE_SCAN_DATA_LEN       (BLE_SCAN_BDA_LEN + BLE_SCAN_RSSI_LEN + BLE_SCAN_NAME_LEN)
+
+
+extern uint8_t CMD_HEAD[];
 
 void uart_scan_ble_device(uint16_t timeout, uint8_t cycle, char* target_name, uint8_t name_len);
 void uart_sent_ble_data(esp_bd_addr_t *bda, uint8_t *data, uint16_t data_len, uint16_t timeout, uint16_t max_idle_time);

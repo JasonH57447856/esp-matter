@@ -23,12 +23,14 @@ typedef struct MqttHeader
 	char nameSpace[MAX_Header_LENGTH];
 	char name[MAX_Header_LENGTH];
 	char requestId[MAX_Header_LENGTH];
-	char timeStamp[MAX_Header_LENGTH];	
+	//char timeStamp[MAX_Header_LENGTH];
+	uint64_t timeStamp;
 }MqttHeader_t;
 
 typedef struct MqttData
 {
     MqttHeader_t Header;
+	esp_err_t status;
     //MqttPayload_t Payload;
     union 
 	{
@@ -39,9 +41,33 @@ typedef struct MqttData
 		struct
 		{
 			char deviceId[MAX_Header_LENGTH];
+			char userId[MAX_Header_LENGTH];
+		}bindHubRequest;
+		struct
+		{
+			char deviceId[MAX_Header_LENGTH];
+			char masterCode[MAX_Header_LENGTH];
+			char hostCode[MAX_Header_LENGTH];
+		}updateMasterCodeRequest;	
+		struct
+		{
+			char deviceName[MAX_Header_LENGTH];
+			char deviceId[MAX_Header_LENGTH];
+			char masterCode[MAX_Header_LENGTH];
+			char hostCode[MAX_Header_LENGTH];
+			char macAddr[MAX_Header_LENGTH];
+			bool cacheActive;
+		}bindHubAndLockRequest;		
+		struct
+		{
+			char deviceId[MAX_Header_LENGTH];
 			char commandName[MAX_Header_LENGTH];
 			char commandContent[MAX_Payload_LENGTH];
 		}lockCommandRequest;	
+		struct
+		{
+			char deviceId[MAX_Header_LENGTH];
+		}unbindHubAndLockRequest;		
 	};
 }MqttData_t;
 

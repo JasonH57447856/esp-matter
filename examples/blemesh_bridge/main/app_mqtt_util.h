@@ -16,7 +16,10 @@ extern "C" {
 #include "app_mqtt.h"
 
 void MqttEventHandler(AppEvent * aEvent);
+void MqttSendCommandResponse(MqttData_t * MqttData);
+int mac_bin2str(const char *bin, char *str, size_t max_len);
 
+extern MqttData_t sMqttDataCache;
 
 
 

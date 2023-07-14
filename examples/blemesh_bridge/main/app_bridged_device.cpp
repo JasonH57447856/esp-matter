@@ -24,6 +24,8 @@
 #if defined(MAX_BRIDGED_DEVICE_COUNT) && MAX_BRIDGED_DEVICE_COUNT > 0
 #define APP_BRIDGE_BRIDGED_DEVICE_ADDR_KEY "dev_addr"
 #define APP_BRIDGE_BRIDGED_DEVICE_TYPE_KEY "dev_type"
+#define APP_BRIDGE_BRIDGED_DEVICE_INFO_KEY "dev_info"
+
 
 using namespace esp_matter;
 
@@ -33,7 +35,7 @@ static uint8_t g_current_bridged_device_count = 0;
 
 /** Persistent Bridged Device Info **/
 
-static esp_err_t app_bridge_store_bridged_device_info(app_bridged_device_t *bridged_device)
+esp_err_t app_bridge_store_bridged_device_info(app_bridged_device_t *bridged_device)
 {
     esp_err_t err = ESP_OK;
     if (!bridged_device) {
@@ -59,6 +61,11 @@ static esp_err_t app_bridge_store_bridged_device_info(app_bridged_device_t *brid
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error storing the device type");
     }
+	err = nvs_set_blob(handle, APP_BRIDGE_BRIDGED_DEVICE_INFO_KEY, &bridged_device->dev_info,
+                        sizeof(app_bridged_device_info_t));
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error storing the device info");
+    }
     nvs_commit(handle);
     nvs_close(handle);
     return err;
@@ -66,6 +73,7 @@ static esp_err_t app_bridge_store_bridged_device_info(app_bridged_device_t *brid
 
 static esp_err_t app_bridge_read_bridged_device_info(app_bridged_device_type_t *device_type,
                                                      app_bridged_device_address_t *device_addr,
+                                                     app_bridged_device_info_t *device_info,
                                                      uint16_t matter_endpoint_id)
 {
     esp_err_t err = ESP_OK;
@@ -92,6 +100,11 @@ static esp_err_t app_bridge_read_bridged_device_info(app_bridged_device_type_t *
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error reading the device type");
     }
+    len = sizeof(app_bridged_device_info_t);
+    err = nvs_get_blob(handle, APP_BRIDGE_BRIDGED_DEVICE_INFO_KEY, device_info, &len);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error reading the device info");
+    }	
     nvs_close(handle);
     return err;
 }
@@ -151,9 +164,7 @@ app_bridged_device_t *app_bridge_create_bridged_device(node_t *node, uint16_t pa
 
 	memcpy((uint8_t*)new_dev->dev_info.device_uuid, (uint8_t*)device_info.device_uuid, sizeof(device_info.device_uuid));
 	memcpy((uint8_t*)new_dev->dev_info.master_code, (uint8_t*)device_info.master_code, sizeof(device_info.master_code));
-	memcpy((uint8_t*)new_dev->dev_info.password, (uint8_t*)device_info.password, sizeof(device_info.password));
-	new_dev->dev_info.password_len = device_info.password_len;		
-			
+	memcpy((uint8_t*)new_dev->dev_info.password, (uint8_t*)device_info.password, sizeof(device_info.password));			
     g_bridged_device_list = new_dev;
     g_current_bridged_device_count++;
 
@@ -181,7 +192,8 @@ esp_err_t app_bridge_initialize(node_t *node)
         if (matter_endpoint_id_array[idx] != chip::kInvalidEndpointId) {
             app_bridged_device_type_t device_type;
             app_bridged_device_address_t device_addr;
-            err = app_bridge_read_bridged_device_info(&device_type, &device_addr, matter_endpoint_id_array[idx]);
+			app_bridged_device_info_t device_info;
+            err = app_bridge_read_bridged_device_info(&device_type, &device_addr, &device_info, matter_endpoint_id_array[idx]);
             if (err != ESP_OK) {
                 ESP_LOGE(TAG,
                          "Failed to read the app_bridged_device_type and app_bridged_device_address for endpoint %d",
@@ -201,6 +213,7 @@ esp_err_t app_bridge_initialize(node_t *node)
             }
             new_dev->dev_type = device_type;
             new_dev->dev_addr = device_addr;
+			new_dev->dev_info = device_info;
             new_dev->next = g_bridged_device_list;
             g_bridged_device_list = new_dev;
             g_current_bridged_device_count++;
@@ -348,6 +361,20 @@ app_bridged_device_t *app_bridge_get_device_by_matter_endpointid(uint16_t matter
     while (current_dev) {
         if ((current_dev->dev_type == ESP_MATTER_BRIDGED_DEVICE_TYPE_ESPNOW) && current_dev->dev &&
             (esp_matter::endpoint::get_id(current_dev->dev->endpoint) == matter_endpointid)) {
+            return current_dev;
+        }
+        current_dev = current_dev->next;
+    }
+    return NULL;
+
+}
+
+app_bridged_device_t *app_bridge_get_device_by_device_uuid(uint8_t *uuid)
+{
+    app_bridged_device_t *current_dev = g_bridged_device_list;
+    while (current_dev) {
+        if ((current_dev->dev_type == ESP_MATTER_BRIDGED_DEVICE_TYPE_ESPNOW) && current_dev->dev &&
+            !strcmp((char *)current_dev->dev_info.device_uuid, (char *)uuid)) {
             return current_dev;
         }
         current_dev = current_dev->next;

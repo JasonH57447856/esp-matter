@@ -335,6 +335,20 @@ app_bridged_device_t *app_bridge_get_device_by_espnow_macaddr(uint8_t espnow_mac
     return NULL;
 }
 
+app_bridged_device_t *app_bridge_get_device_by_matter_endpointid(uint16_t matter_endpointid)
+{
+    app_bridged_device_t *current_dev = g_bridged_device_list;
+    while (current_dev) {
+        if ((current_dev->dev_type == ESP_MATTER_BRIDGED_DEVICE_TYPE_ESPNOW) && current_dev->dev &&
+            (esp_matter::endpoint::get_id(current_dev->dev->endpoint) == matter_endpointid)) {
+            return current_dev;
+        }
+        current_dev = current_dev->next;
+    }
+    return NULL;
+
+}
+
 uint16_t app_bridge_get_matter_endpointid_by_espnow_macaddr(uint8_t espnow_macaddr[6])
 {
     app_bridged_device_t *current_dev = g_bridged_device_list;

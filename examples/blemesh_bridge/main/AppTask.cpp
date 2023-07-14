@@ -32,7 +32,7 @@
 #include <app/server/Server.h>
 
 #include "lockly_c_header.h"
-#include "lockly_c_encode.h"
+//#include "lockly_c_encode.h"
 #include "uart_util.h"
 #include "driver/gpio.h"
 
@@ -271,6 +271,7 @@ void AppTask::FunctionTimerEventHandler(AppEvent * aEvent)
     {
         // Actually trigger Factory Reset
         sAppTask.mFunction = kFunction_NoneSelected;
+		factory_reset();
         chip::Server::GetInstance().ScheduleFactoryReset();
     }
 }
@@ -413,7 +414,7 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
    buffer = encodeOpenCloseCmd_Test(&Length,
 									   2,
 									   (unsigned char *)device->dev_info.password,
-									   device->dev_info.password_len,
+									   strlen((char *)device->dev_info.password),
 									   0,
 									   aEvent->LockEvent.Action,
 									   PGCCmdSrc_alexa,
@@ -537,7 +538,7 @@ void app_uart_process(uint8_t *buf, uint32_t length)
 void app_mqtt_process(esp_mqtt_event_handle_t event_data)
 {
 	ESP_LOGI(TAG, "app_mqtt_process");
-	ESP_LOGI(TAG, "TOPIC=%s", event_data->topic);
+	//ESP_LOGI(TAG, "TOPIC=%s", event_data->topic);
 	
 	uint8_t* buf = (uint8_t*) pvPortMalloc(event_data->data_len);
 	if(buf){
