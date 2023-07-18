@@ -29,6 +29,7 @@
 #include <platform/ConfigurationManager.h>
 #include "uart_util.h"
 #include "lockly_c_header.h"
+#include "mbedtls/base64.h"
 
 using namespace chip::DeviceLayer;
 
@@ -84,9 +85,16 @@ void MqttSendCommandResponse(MqttData_t * MqttData)
 	cJSON_AddStringToObject(header, "namespace", MqttData->Header.nameSpace);
 	if(strcmp(MqttData->Header.name,"lockCommandRequest")==0){
 		cJSON_AddStringToObject(header, "name","lockCommandResponse");
-		cJSON_AddNumberToObject(payload, "code",0);
-		cJSON_AddStringToObject(payload, "errorMessage","");		
-		cJSON_AddStringToObject(payload, "commandContent","");
+		if(MqttData->status==ESP_OK){
+				cJSON_AddNumberToObject(payload, "code",0);
+				cJSON_AddStringToObject(payload, "errorMessage","");		
+				cJSON_AddStringToObject(payload, "commandContent",MqttData->lockCommandRequest.commandContent);
+			}
+		else{
+				cJSON_AddNumberToObject(payload, "code",1);
+				cJSON_AddStringToObject(payload, "errorMessage","Not Found");		
+				cJSON_AddStringToObject(payload, "commandContent","");				
+			}
 		}
 	else if(strcmp(MqttData->Header.name,"ping")==0){
 		cJSON_AddStringToObject(header, "name", "pong");
@@ -128,10 +136,6 @@ void MqttSendCommandResponse(MqttData_t * MqttData)
 			mac_bin2str((char *)hub_mac_addr,(char *)hub_mac_str,18);
 			cJSON_AddStringToObject(payload, "macAddr",(char *)hub_mac_str);
 		}
-	
-	//char UUID[64];
-	//get_uuid_str(UUID);
-	//cJSON_AddStringToObject(header, "requestId", UUID);
 	cJSON_AddStringToObject(header, "requestId",MqttData->Header.requestId);
 	cJSON_AddNumberToObject(header, "timestamp",get_timestamp_ms());	
 	cJSON_AddItemToObject(root, "header",header);
@@ -139,13 +143,13 @@ void MqttSendCommandResponse(MqttData_t * MqttData)
 	char* buf = cJSON_Print(root);
 	
 	cJSON *pName = cJSON_GetObjectItem(header, "name");
-	if(pName->valuestring){		
+	if(pName != NULL){		
 	    ESP_LOGI(TAG, "pName->valuestring=%s", pName->valuestring);
 		int msg_id = esp_mqtt_client_publish(client, "server", buf, 0, 0, 0);
 	    ESP_LOGI(TAG, "sent publish successful, msg_id=%d ,data=%s", msg_id,buf);
 	}
 	else{		
-		ESP_LOGI(TAG, "Unsuported Mqtt Name");
+		ESP_LOGI(TAG, "Unsuported Mqtt Command");
 	}
 	cJSON_free((void *) buf);
 	cJSON_Delete(root);
@@ -153,24 +157,24 @@ void MqttSendCommandResponse(MqttData_t * MqttData)
 
 void MqttCommandHandler(MqttData_t * MqttData)
 {
+	app_bridged_device_t *device;
 	if(strcmp(MqttData->Header.name,"lockCommandRequest")==0){
 		ESP_LOGI(TAG, "lockCommandRequest");
-		if(strcmp(MqttData->lockCommandRequest.commandName,"forward")==0){
-			size_t out_len;
-			app_uart_send((const char*)base64_decode(MqttData->lockCommandRequest.commandContent,strlen(MqttData->lockCommandRequest.commandContent),&out_len),out_len);
-			//app_uart_send((const char*)MqttData->lockCommandRequest.commandContent,strlen(MqttData->lockCommandRequest.commandContent));
-/*
-            #define deviceUUID "250045003437470734383732"
-            #define MasterCode "78957036"
-            #define Password "111555"
-			uint8_t mac_addr[6] = {0x58,0x7a,0x62,0x11,0x26,0xa5};
-			app_bridged_device_info_t bridged_device_info;
-			strcpy((char *)bridged_device_info.master_code, (const char *)MasterCode);	
-			strcpy((char *)bridged_device_info.password, (const char *)Password);
-			strcpy((char *)bridged_device_info.device_uuid, (const char *)deviceUUID);
-			//bridged_device_info.password_len = strlen(Password);	
-			blemesh_bridge_match_bridged_door_lock(mac_addr,bridged_device_info);*/
-	
+			if(strcmp(MqttData->lockCommandRequest.commandName,"forward")==0){
+				size_t out_len;
+				unsigned char buffer[256];
+				device = app_bridge_get_device_by_device_uuid((uint8_t *)MqttData->lockCommandRequest.deviceId);
+				if(device){
+					mbedtls_base64_decode( buffer, sizeof(buffer),&out_len,(const unsigned char *)MqttData->lockCommandRequest.commandContent,\
+											strlen(MqttData->lockCommandRequest.commandContent) );					
+					uart_sent_ble_data((esp_bd_addr_t *)device->dev_addr.espnow_macaddr, buffer , out_len, 3000,3000);
+					
+					sMqttDataCache = sMqttData;					
+					sMqttDataCache.lockCommandRequest.cacheActive = true;
+					return;
+				}
+				else
+					MqttData->status =ESP_FAIL;
 			}
 		}
 	else if(strcmp(MqttData->Header.name,"bindHubAndLockRequest")==0){
@@ -193,7 +197,6 @@ void MqttCommandHandler(MqttData_t * MqttData)
 		}
 	else if(strcmp(MqttData->Header.name,"updateMasterCodeRequest")==0){
 			ESP_LOGI(TAG, "updateMasterCodeRequest");			
-			app_bridged_device_t *device;
 			device = app_bridge_get_device_by_device_uuid((uint8_t *)MqttData->unbindHubAndLockRequest.deviceId);
 			if(device){
 				strcpy((char *)device->dev_info.device_uuid, (const char *)MqttData->updateMasterCodeRequest.deviceId);
@@ -211,7 +214,8 @@ void MqttCommandHandler(MqttData_t * MqttData)
 
 void MqttEventHandler(AppEvent * aEvent)
 {
-	MqttData_t * pMqttData;
+	MqttData_t * pMqttData;	
+	memset(&sMqttData, 0, sizeof(sMqttData));
 	pMqttData = &sMqttData;
 	if(aEvent->MqttEvent.buf){
 		ESP_LOGI(TAG, "MQTT Data=%s", aEvent->MqttEvent.buf);
@@ -273,8 +277,9 @@ void MqttEventHandler(AppEvent * aEvent)
 					cJSON *pHostCode = cJSON_GetObjectItem(pPayload, "hostCode");
 					strcpy(pMqttData->updateMasterCodeRequest.hostCode, pHostCode->valuestring);
 					}				
-				}else{
-				ESP_LOGE(TAG, "MQTT Data no payload error");}
+				}
+				else{
+					ESP_LOGE(TAG, "MQTT Data no payload error");}
 			if(strcmp(pMqttData->Header.nameSpace,"com.lockly")==0){	
 				MqttCommandHandler(pMqttData);
 			}

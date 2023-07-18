@@ -29,6 +29,7 @@
 #include "app_mqtt.h"
 #include "app_uart.h"
 #include "app_sntp.h"
+#include "LEDWidget.h"
 
 #include <esp_matter.h>
 #include <esp_matter_core.h>
@@ -144,6 +145,5 @@ inline AppTask & GetAppTask(void)
 {
     return AppTask::sAppTask;
 }
-
 
 

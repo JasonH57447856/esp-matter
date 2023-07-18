@@ -32,6 +32,9 @@
 #include <app_bridged_device.h>
 #include <blemesh_bridge.h>
 #include "app_mqtt_util.h"
+#include "lockly_c_header.h"
+#include "mbedtls/base64.h"
+
 
 #define UART_SEND_TIMEOUT_MS 300
 
@@ -132,34 +135,77 @@ static void uart_timeout_callback(TimerHandle_t xTimer)
 
 void UartReceiveEventHandler(AppEvent * aEvent)
 {
+	char InvalidrequestId[MAX_Header_LENGTH] = {0};
 	if(aEvent->UartEvent.buf){	
 		ESP_LOGI(TAG, "UartReceiveEventHandler");
 		esp_log_buffer_hex(TAG, aEvent->UartEvent.buf, aEvent->UartEvent.len);
 		if(!memcmp(aEvent->UartEvent.buf,CMD_HEAD,HEAD_FIELD_LEN)){
 			switch (aEvent->UartEvent.buf[CMD_MODE_POS])
 			{
-			case UART_CMD_SCAN:
-				 uint8_t device_cnt = aEvent->UartEvent.buf[BLE_SCAN_CNT_POS];				 
-				 uint8_t mac_addr[6]={0};
-				 if(device_cnt > 0){
-					app_bridged_device_info_t bridged_device_info;			
-					memcpy(mac_addr,&aEvent->UartEvent.buf[BLE_SCAN_DATA_POS],BLE_SCAN_BDA_LEN);
-					strcpy((char *)bridged_device_info.master_code, (const char *)&sMqttDataCache.bindHubAndLockRequest.masterCode);	
-					strcpy((char *)bridged_device_info.password, (const char *)&sMqttDataCache.bindHubAndLockRequest.hostCode);
-					strcpy((char *)bridged_device_info.device_uuid, (const char *)&sMqttDataCache.bindHubAndLockRequest.deviceId);
-					blemesh_bridge_match_bridged_door_lock(mac_addr,bridged_device_info);
-					sMqttDataCache.status = ESP_OK;					
-				 }
-				 else{
-				 	sMqttDataCache.status = ESP_FAIL;	
-				 }
-			 	mac_bin2str((char *)mac_addr,(char *)&sMqttDataCache.bindHubAndLockRequest.macAddr, 18);
-				if(sMqttDataCache.bindHubAndLockRequest.cacheActive==true){
-					if(strcmp((const char *)&sMqttDataCache.bindHubAndLockRequest.deviceName[0],(const char *)&aEvent->UartEvent.buf[BLE_SCAN_Name_POS])==0)
+				case UART_CMD_SCAN:
+					{
+						 uint8_t device_cnt = aEvent->UartEvent.buf[BLE_SCAN_CNT_POS];				 
+						 uint8_t mac_addr[6]={0};		
+						 app_bridged_device_info_t bridged_device_info;	
+						 if((memcmp(&sMqttDataCache.Header.requestId[0],InvalidrequestId,MAX_Header_LENGTH)!=0)&&(sMqttDataCache.bindHubAndLockRequest.cacheActive == true)){
+							 if(device_cnt > 0){										
+								memcpy(mac_addr,&aEvent->UartEvent.buf[BLE_SCAN_DATA_POS],BLE_SCAN_BDA_LEN);
+								strcpy((char *)bridged_device_info.master_code, (const char *)&sMqttDataCache.bindHubAndLockRequest.masterCode);	
+								strcpy((char *)bridged_device_info.password, (const char *)&sMqttDataCache.bindHubAndLockRequest.hostCode);
+								strcpy((char *)bridged_device_info.device_uuid, (const char *)&sMqttDataCache.bindHubAndLockRequest.deviceId);
+								mac_bin2str((char *)mac_addr,(char *)&sMqttDataCache.bindHubAndLockRequest.macAddr, 18);
+								if(strcmp((const char *)&sMqttDataCache.bindHubAndLockRequest.deviceName[0],(const char *)&aEvent->UartEvent.buf[BLE_SCAN_Name_POS])==0){
+									blemesh_bridge_match_bridged_door_lock(mac_addr,bridged_device_info);
+									sMqttDataCache.status = ESP_OK;	
+								}
+								else{
+									sMqttDataCache.status = ESP_FAIL;
+								}
+							 }
+							 else{
+							 	sMqttDataCache.status = ESP_FAIL;	
+							 }
+							MqttSendCommandResponse(&sMqttDataCache);							
+							memset(&sMqttDataCache, 0, sizeof(sMqttDataCache));
+						 }
+					}
+				 break;
+				case UART_CMD_SEND:
+					{
+						/*uint16_t data_len;						
+						size_t out_len;
+						data_len = (uint16_t)aEvent->UartEvent.buf[PACKET_LEN_POS] + (uint16_t)(aEvent->UartEvent.buf[PACKET_LEN_POS+1]<<8) - BLE_SEND_ACK_POS;
+						ESP_LOGI(TAG, "data_len = %d",data_len);
+						memcpy((char *)&sMqttDataCache.lockCommandRequest.commandContent, (const char *)base64_encode((const void *)&aEvent->UartEvent.buf[BLE_SEND_ACK_POS],\
+								data_len,&out_len),out_len);
+						char requestId[MAX_Header_LENGTH] = {0};
+						if(memcmp(&sMqttDataCache.Header.requestId[0],requestId,MAX_Header_LENGTH)==0){
+							strcpy(&sMqttDataCache.Header.name[0],"lockCommandRequest");
+							strcpy(&sMqttDataCache.Header.nameSpace[0],"com.lockly");		
+							char UUID[64];
+							get_uuid_str(UUID);
+							strcpy(&sMqttDataCache.Header.requestId[0],UUID);
+						}
+						
 						MqttSendCommandResponse(&sMqttDataCache);
-				}
-				memset(&sMqttDataCache, 0, sizeof(sMqttDataCache));
-			 break;
+						memset(&sMqttDataCache, 0, sizeof(sMqttDataCache));*/
+						uint16_t data_len;						
+						size_t out_len;
+						if((memcmp(&sMqttDataCache.Header.requestId[0],InvalidrequestId,MAX_Header_LENGTH)!=0)&&(sMqttDataCache.lockCommandRequest.cacheActive == true))
+						{
+							data_len = (uint16_t)aEvent->UartEvent.buf[PACKET_LEN_POS] + (uint16_t)(aEvent->UartEvent.buf[PACKET_LEN_POS+1]<<8) - BLE_SEND_ACK_POS;
+							ESP_LOGI(TAG, "data_len = %d",data_len);
+							unsigned char buffer[256];
+							mbedtls_base64_encode( (unsigned char *)&sMqttDataCache.lockCommandRequest.commandContent, sizeof(buffer),\
+													&out_len,(const unsigned char *)&aEvent->UartEvent.buf[BLE_SEND_ACK_POS], (size_t)data_len );
+							//memcpy((char *)&sMqttDataCache.lockCommandRequest.commandContent, (const char *)base64_encode((const void *)&aEvent->UartEvent.buf[BLE_SEND_ACK_POS],data_len,&out_len),out_len);														
+							MqttSendCommandResponse(&sMqttDataCache);
+							memset(&sMqttDataCache, 0, sizeof(sMqttDataCache));		
+						}
+					}
+				 break;
+				default:
+	        	 break;
 			}
 		}
 		else{

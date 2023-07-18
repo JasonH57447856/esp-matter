@@ -42,7 +42,8 @@ void LEDWidget::Set(bool state)
 {
     mBlinkOnTimeMS  = 0;
     mBlinkOffTimeMS = 0;
-    DoSet(state);
+	if(state!=mState)
+    	DoSet(state);
 }
 
 void LEDWidget::Blink(uint32_t changeRateMS)

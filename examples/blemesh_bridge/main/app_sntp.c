@@ -12,6 +12,8 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "esp_sntp.h"
+#include "app_mqtt.h"
+#include "esp_netif_sntp.h"
 
 static const char *TAG = "sntp";
 
@@ -31,7 +33,10 @@ static void initialize_sntp(void);
 
 void time_sync_notification_cb(struct timeval *tv)
 {
-   time_t now;
+	ESP_LOGI(TAG, "Notification of a time synchronization event");
+	app_mqtt_init();
+
+/*   time_t now;
     struct tm timeinfo;
 
     ESP_LOGI(TAG, "Notification of a time synchronization event");
@@ -51,71 +56,47 @@ void time_sync_notification_cb(struct timeval *tv)
     tzset();
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
+    ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);*/
+    
+}
+
+void initialize_sntp(void)
+{
+    ESP_LOGI(TAG, "Initializing SNTP");
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG_MULTIPLE(2,
+                               ESP_SNTP_SERVER_LIST("cn.pool.ntp.org","pool.ntp.org") );	
+    esp_netif_sntp_init(&config);
+}
+
+static esp_err_t obtain_time(void)
+{
+    // wait for time to be set
+    int retry = 0;
+    const int retry_count = 10;
+    while (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(2000)) != ESP_OK && ++retry < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+    }
+    if (retry == retry_count) {
+        return ESP_FAIL;
+    }
+    return ESP_OK;
 }
 
 void app_sntp_init(void)
 {
-#ifdef LWIP_DHCP_GET_NTP_SRV
-		sntp_servermode_dhcp(1);	  // accept NTP offers from DHCP server, if any
-#endif
-    initialize_sntp();
+    initialize_sntp();	
+    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+	//obtain_time();
 }
 
-int64_t get_timestamp_ms(void)
+uint64_t get_timestamp_ms(void)
 {
 	struct timeval tv_now;
-	int64_t time_us; 
+	uint64_t time_us; 
 	gettimeofday(&tv_now, NULL);	
-	time_us	= (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+	time_us	= (uint64_t)tv_now.tv_sec * 1000000L + (uint64_t)tv_now.tv_usec;
 	return time_us/1000;
 }
 
 
-static void initialize_sntp(void)
-{
-    ESP_LOGI(TAG, "Initializing SNTP");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
 
-/*
- * If 'NTP over DHCP' is enabled, we set dynamic pool address
- * as a 'secondary' server. It will act as a fallback server in case that address
- * provided via NTP over DHCP is not accessible
- */
-#if LWIP_DHCP_GET_NTP_SRV && SNTP_MAX_SERVERS > 1
-    sntp_setservername(1, "pool.ntp.org");
-
-#if LWIP_IPV6 && SNTP_MAX_SERVERS > 2          // statically assigned IPv6 address is also possible
-    ip_addr_t ip6;
-    if (ipaddr_aton("2a01:3f7::1", &ip6)) {    // ipv6 ntp source "ntp.netnod.se"
-        sntp_setserver(2, &ip6);
-    }
-#endif  /* LWIP_IPV6 */
-
-#else   /* LWIP_DHCP_GET_NTP_SRV && (SNTP_MAX_SERVERS > 1) */
-    // otherwise, use DNS address from a pool
-    sntp_setservername(0, CONFIG_SNTP_TIME_SERVER);
-
-    sntp_setservername(1, "pool.ntp.org");     // set the secondary NTP server (will be used only if SNTP_MAX_SERVERS > 1)
-#endif
-
-//    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
-#ifdef CONFIG_SNTP_TIME_SYNC_METHOD_SMOOTH
-    sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
-#endif
-    sntp_init();
-
-    ESP_LOGI(TAG, "List of configured NTP servers:");
-
-    for (uint8_t i = 0; i < SNTP_MAX_SERVERS; ++i){
-        if (sntp_getservername(i)){
-            ESP_LOGI(TAG, "server %d: %s", i, sntp_getservername(i));
-        } else {
-            // we have either IPv4 or IPv6 address, let's print it
-            char buff[INET6_ADDRSTRLEN];
-            ip_addr_t const *ip = sntp_getserver(i);
-            if (ipaddr_ntoa_r(ip, buff, INET6_ADDRSTRLEN) != NULL)
-                ESP_LOGI(TAG, "server %d: %s", i, buff);
-        }
-    }
-}

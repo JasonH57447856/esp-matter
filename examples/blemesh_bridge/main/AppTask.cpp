@@ -124,13 +124,7 @@ esp_err_t AppTask::Init()
     sGreenLED.Set(true);
 	
 	app_uart_init();
-	uart_send_task_init();
-	if (ConnectivityMgr().IsWiFiStationProvisioned()){
-        sRedLED.Set(true);
-        sGreenLED.Set(false);
-		}
-
-	
+	uart_send_task_init();	
     return err;
 }
 
@@ -177,15 +171,22 @@ void AppTask::AppTaskMain(void * pvParameter)
 	
 	if ((sAppTask.mFunction != kFunction_FactoryReset)&&(!ConnectivityMgr().IsWiFiStationProvisioned()))
 	{
-		if (sHaveBLEConnections)
-		{
+		if (sHaveBLEConnections){
 			sRedLED.Blink(100, 100);
 		}
-		else
-		{
+		else{
 			sRedLED.Blink(50, 950);
+		}			
+	}
+	else if((sAppTask.mFunction != kFunction_FactoryReset)&&(ConnectivityMgr().IsWiFiStationProvisioned())){
+		if(!is_mqtt_connected()){
+			sGreenLED.Blink(100, 100);
 		}
-	}else if(sAppTask.mFunction == kFunction_FactoryReset)
+		else{			
+        	sGreenLED.Set(false);
+		}		
+	}
+	else if(sAppTask.mFunction == kFunction_FactoryReset)
 		sRedLED.Blink(500, 500);
 	//sRedLED.Animate();
 	
@@ -196,8 +197,7 @@ void AppTask::AppTaskMain(void * pvParameter)
 	{
 		lastChangeTime = now;			
 		uint64_t timestamp = get_timestamp_ms();
-		//ESP_LOGI(TAG, "timestamp: %"PRIX64" ", timestamp);
-    	ESP_LOGI(TAG, "timestamp: %" PRIX64 " ====[APP] Free memory: %" PRIX32 " bytes",timestamp, esp_get_free_heap_size());		
+    	ESP_LOGI(TAG, "timestamp: %" PRIX64 " ====[APP] Free memory: %" PRIX32 " bytes",timestamp, esp_get_free_heap_size());
 	}
 	if (resetButton.Poll())
 	{
@@ -428,12 +428,12 @@ void AppTask::LockActionEventHandler(AppEvent * aEvent)
 void AppTask::ServiceInitActionEventHandler(AppEvent * aEvent)
 {
    ESP_LOGI(TAG, "ServiceInitActionEventHandler, ServiceType: 0x%x", aEvent->ServiceInitEvent.ServiceType);
-   app_mqtt_init();
+   //app_mqtt_init();
    app_sntp_init();
    	if (ConnectivityMgr().IsWiFiStationProvisioned()){
         sRedLED.Set(true);
         sGreenLED.Set(false);
-		}
+	}
 
 }
 
@@ -522,7 +522,7 @@ void AppTask::DispatchEvent(AppEvent * aEvent)
 
 void app_uart_process(uint8_t *buf, uint32_t length)
 {
-    ESP_LOGI(TAG, "app_uart_process length= %" PRIX32 " ", length);
+    ESP_LOGI(TAG, "app_uart_process length= 0x%" PRIX32 " ", length);
 	uint8_t* buffer = (uint8_t*) pvPortMalloc(length);
 	if(buffer){
 		memcpy(buffer, (uint8_t*)buf, length);

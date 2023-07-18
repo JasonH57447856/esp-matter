@@ -18,6 +18,7 @@ extern "C" {
 void MqttEventHandler(AppEvent * aEvent);
 void MqttSendCommandResponse(MqttData_t * MqttData);
 int mac_bin2str(const char *bin, char *str, size_t max_len);
+void get_uuid_str(char * uuid);
 
 extern MqttData_t sMqttDataCache;
 

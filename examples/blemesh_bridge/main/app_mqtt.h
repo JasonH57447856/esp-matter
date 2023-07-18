@@ -63,6 +63,7 @@ typedef struct MqttData
 			char deviceId[MAX_Header_LENGTH];
 			char commandName[MAX_Header_LENGTH];
 			char commandContent[MAX_Payload_LENGTH];
+			bool cacheActive;
 		}lockCommandRequest;	
 		struct
 		{
@@ -73,6 +74,8 @@ typedef struct MqttData
 
 void app_mqtt_init(void);
 void app_mqtt_process(esp_mqtt_event_handle_t event_data);
+bool is_mqtt_connected(void);
+
 extern esp_mqtt_client_handle_t client;
 
 
